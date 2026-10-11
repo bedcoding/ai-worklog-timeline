@@ -109,6 +109,38 @@ describe('Word 내보내기', () => {
     }
   });
 
+  it('이어 쓴 날짜 줄은 사례 표 뒤에 날짜와 한 일 두 칸 표로 넣는다', async () => {
+    const description =
+      '메뉴를 옮김.\n\n사례 1. 정렬 기준\nAI 초안: 최신순만 지원했음.\n담당자 수정: 인기순을 추가함.\n\n8. 7. 홈페이지 메뉴 전환\n8. 11.~8. 13. 배너 메뉴 전환';
+    const shot = [{ id: 'img1', label: '화면 캡처', name: 'shot.png' }];
+    for (const imagesBelow of [false, true]) {
+      for (const images of [[], shot]) {
+        const { body } = await build({ includeForm: false, imagesBelow }, [rec('a', '2026-07-14', '서버 전환', { description, images })]);
+        expect(body.match(/<w:tbl>/g)).toHaveLength(3);
+        expect(body).toContain('한 일');
+        expect(body).toContain('8. 11.~8. 13.');
+        expect(body).toContain('배너 메뉴 전환');
+        expect(body).not.toContain('8. 7. 홈페이지');
+        expect(body.indexOf('담당자 수정본')).toBeLessThan(body.indexOf('한 일'));
+        expect(body).not.toMatch(/<\/w:tbl>\s*<\/w:tc>/);
+      }
+    }
+  });
+
+  it('이미지를 옆 칸에 넣으면 맨 끝 날짜 표는 좁은 칸이 아니라 기록 칸 아래 표 폭 줄에 넣는다', async () => {
+    const description = '메뉴를 옮김.\n\n8. 7. 홈페이지 메뉴 전환\n8. 11.~8. 13. 배너 메뉴 전환';
+    // 두 칸을 합친 칸이 바로 표로 시작하면 날짜 표만 담은 줄입니다
+    const dateRow = /<w:gridSpan w:val="2"\/>(?:(?!<w:tc>)[\s\S])*?<\/w:tcPr>\s*<w:tbl>/;
+    const side = await build({ includeForm: false }, [
+      rec('a', '2026-07-14', '서버 전환', { description, images: [{ id: 'img1', label: '화면 캡처', name: 'shot.png' }] }),
+    ]);
+    expect(side.body).toMatch(dateRow);
+    // 이미지가 없으면 내용 칸이 이미 표 폭이라 날짜 표를 그 안에 둡니다
+    const alone = await build({ includeForm: false }, [rec('a', '2026-07-14', '서버 전환', { description })]);
+    expect(alone.body).not.toMatch(dateRow);
+    expect(alone.body).toContain('한 일');
+  });
+
   it('이미지를 내용 아래에 넣으면 칸 하나짜리 표에 칸 이름 줄 없이 담는다', async () => {
     const { body } = await build({ includeForm: false, imagesBelow: true });
     expect(body).not.toContain('<w:tblHeader');

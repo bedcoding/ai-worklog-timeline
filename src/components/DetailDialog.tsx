@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { hasCases, plainRecord, splitCases } from '../lib/cases';
+import { hasCases, plainRecord, splitContent } from '../lib/cases';
 import { dottedDate, weekdayEn } from '../lib/dates';
 import { ACCEPT_ATTR, hasFiles, imagesFromClipboard, imagesFromDrop } from '../lib/images';
 import { READ_ONLY } from '../lib/mode';
@@ -241,15 +241,32 @@ export function DetailDialog(props: DetailDialogProps) {
 }
 
 /**
- * 기록 내용을 보여 주고, 내용 안의 사례 묶음은 표로 바꿉니다.
- * 상세 화면은 폭이 좁아서 Word처럼 가로 세 칸으로 두지 않고, 사례마다 항목을 머리로 둔 세로 표로 보여 줍니다.
+ * 기록 내용을 보여 주고, 내용 안의 사례 묶음과 이어 쓴 날짜 줄은 표로 바꿉니다.
+ * 상세 화면은 폭이 좁아서 사례는 Word처럼 가로 세 칸으로 두지 않고, 사례마다 항목을 머리로 둔 세로 표로 보여 줍니다.
  */
 function Description({ text }: { text: string }) {
   return (
     <div className="description">
-      {splitCases(text).map((part, i) =>
+      {splitContent(text).map((part, i) =>
         part.kind === 'text' ? (
           <p key={i}>{part.text}</p>
+        ) : part.kind === 'dates' ? (
+          <table key={i} className="date-table">
+            <thead>
+              <tr>
+                <th scope="col">날짜</th>
+                <th scope="col">한 일</th>
+              </tr>
+            </thead>
+            <tbody>
+              {part.rows.map((row, j) => (
+                <tr key={j}>
+                  <td>{row.date}</td>
+                  <td>{row.text}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : (
           <div key={i} className="case-tables">
             {part.rows.map((row, j) => (

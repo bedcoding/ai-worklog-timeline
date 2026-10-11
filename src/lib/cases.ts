@@ -13,9 +13,31 @@ export interface CaseRow {
 
 export type DescriptionPart = { kind: 'text'; text: string } | { kind: 'cases'; rows: CaseRow[] };
 
+/** 기록 내용 안의 "날짜 | 한 일" 표 한 줄 */
+export interface DateRow {
+  /** 쓴 그대로의 날짜나 기간입니다(예: 8. 11.~8. 13., 8/11~8/13) */
+  date: string;
+  text: string;
+}
+
+/** 화면과 문서에 그릴 기록 내용 조각. 사례 묶음 말고도 이어 쓴 날짜 줄을 표로 꺼냅니다. */
+export type ContentPart = DescriptionPart | { kind: 'dates'; rows: DateRow[] };
+
 const DRAFT = /^AI\s*초안\s*[:：]\s*/;
 const REVISED = /^담당자\s*수정본?\s*[:：]\s*/;
 const NUMBER = /^사례\s*\d+\s*[.)]?\s*/;
+const DAY = String.raw`(?:\d{1,2}\.\s?\d{1,2}\.|\d{1,2}/\d{1,2})`;
+/** "8. 7. 한 일"이나 "8/11~8/13 한 일"처럼 날짜나 기간으로 시작하는 줄 */
+const DATE_LINE = new RegExp(String.raw`^(${DAY}(?:\s*~\s*${DAY})?)\s+(\S.*)$`);
+
+/** 글 앞뒤의 빈 줄을 버립니다 */
+function trimLines(lines: string[]): string {
+  let start = 0;
+  let end = lines.length;
+  while (start < end && !lines[start].trim()) start += 1;
+  while (end > start && !lines[end - 1].trim()) end -= 1;
+  return lines.slice(start, end).join('\n');
+}
 
 /**
  * 기록 내용을 일반 글과 사례 묶음으로 나눕니다.
@@ -28,10 +50,8 @@ export function splitCases(text: string): DescriptionPart[] {
   const parts: DescriptionPart[] = [];
   let buffer: string[] = [];
   const flush = () => {
-    // 글 앞뒤의 빈 줄은 버립니다
-    while (buffer.length && !buffer[0].trim()) buffer.shift();
-    while (buffer.length && !buffer[buffer.length - 1].trim()) buffer.pop();
-    if (buffer.length) parts.push({ kind: 'text', text: buffer.join('\n') });
+    const kept = trimLines(buffer);
+    if (kept) parts.push({ kind: 'text', text: kept });
     buffer = [];
   };
   for (let i = 0; i < lines.length; i++) {
@@ -59,32 +79,102 @@ export function splitCases(text: string): DescriptionPart[] {
   return parts;
 }
 
-/**
- * 기록 내용을 입력 화면의 내용 칸과 사례 칸으로 나눕니다.
- * 사례 묶음이 하나이고 내용 맨 끝에 있을 때만 나눕니다.
- * 그 밖의 모양이면 쓴 글을 그대로 내용 칸에 두어 순서가 바뀌지 않게 합니다.
- */
-export function splitDescription(text: string): { body: string; cases: CaseRow[] } {
-  const parts = splitCases(text.trim());
-  const last = parts[parts.length - 1];
-  if (last?.kind !== 'cases' || parts.filter((p) => p.kind === 'cases').length !== 1) return { body: text.trim(), cases: [] };
-  const body = parts.flatMap((p) => (p.kind === 'text' ? [p.text] : [])).join('\n\n');
-  return { body, cases: last.rows };
+function dateRow(line: string): DateRow {
+  const match = DATE_LINE.exec(line.trim());
+  return { date: match?.[1] ?? '', text: match?.[2] ?? line.trim() };
 }
 
 /**
- * 내용 칸과 사례 칸을 저장할 기록 내용 한 덩어리로 합칩니다.
+ * 글을 일반 글과 날짜 표로 나눕니다.
+ * 날짜나 기간으로 시작하는 줄이 두 줄 이상 이어지면 표 하나로 보고, 한 줄뿐이면 글로 둡니다.
+ */
+export function splitDates(text: string): ContentPart[] {
+  const lines = text.split(/\r?\n/);
+  const parts: ContentPart[] = [];
+  let buffer: string[] = [];
+  const flush = () => {
+    const kept = trimLines(buffer);
+    if (kept) parts.push({ kind: 'text', text: kept });
+    buffer = [];
+  };
+  for (let i = 0; i < lines.length;) {
+    let end = i;
+    while (end < lines.length && DATE_LINE.test(lines[end].trim())) end += 1;
+    if (end - i >= 2) {
+      flush();
+      parts.push({ kind: 'dates', rows: lines.slice(i, end).map(dateRow) });
+      i = end;
+    } else {
+      buffer.push(lines[i]);
+      i += 1;
+    }
+  }
+  flush();
+  return parts;
+}
+
+/** 기록 내용에 날짜 표가 하나라도 있는지 알려 줍니다 */
+export function hasDates(text: string): boolean {
+  return splitDates(text).some((p) => p.kind === 'dates');
+}
+
+/** 기록 내용에서 날짜 표가 되는 줄 묶음만 빼고, 나머지 글과 사례 줄은 그대로 둡니다 */
+export function withoutDates(text: string): string {
+  const parts = splitDates(text);
+  if (!parts.some((p) => p.kind === 'dates')) return text;
+  return parts.flatMap((p) => (p.kind === 'text' ? [p.text] : [])).join('\n\n');
+}
+
+/** 기록 내용을 화면과 문서에 그릴 조각으로 나눕니다. 사례 묶음은 사례 표로, 이어 쓴 날짜 줄은 날짜 표로 꺼냅니다. */
+export function splitContent(text: string): ContentPart[] {
+  return splitCases(text).flatMap((part) => (part.kind === 'text' ? splitDates(part.text) : [part]));
+}
+
+/**
+ * 내용 끝에 이어 쓴 날짜 줄을 떼어 냅니다. 입력 화면은 이 줄들을 날짜 칸에 따로 보여 줍니다.
+ * 날짜 줄은 사례 뒤에 오므로, 먼저 떼어 내야 사례 묶음이 내용 끝에 남습니다.
+ */
+export function splitTrailingDates(text: string): { body: string; dates: string } {
+  const lines = text.trim().split(/\r?\n/);
+  let end = lines.length;
+  while (end > 0 && DATE_LINE.test(lines[end - 1].trim())) end -= 1;
+  const dates = lines.slice(end).map((line) => line.trim());
+  return { body: lines.slice(0, end).join('\n').trim(), dates: dates.join('\n') };
+}
+
+/**
+ * 기록 내용을 입력 화면의 내용 칸, 사례 칸, 날짜 칸으로 나눕니다.
+ * 끝에 이어 쓴 날짜 줄은 날짜 칸으로 꺼내고, 남은 글 끝에 사례 묶음이 하나 있을 때만 사례 칸으로 나눕니다.
+ * 그 밖의 모양이면 쓴 글을 그대로 내용 칸에 두어 순서가 바뀌지 않게 합니다.
+ */
+export function splitDescription(text: string): { body: string; cases: CaseRow[]; dates: string } {
+  const { body: rest, dates } = splitTrailingDates(text);
+  const parts = splitCases(rest);
+  const last = parts[parts.length - 1];
+  if (last?.kind !== 'cases' || parts.filter((p) => p.kind === 'cases').length !== 1) return { body: rest, cases: [], dates };
+  const body = parts.flatMap((p) => (p.kind === 'text' ? [p.text] : [])).join('\n\n');
+  return { body, cases: last.rows, dates };
+}
+
+/**
+ * 내용 칸, 사례 칸, 날짜 칸을 저장할 기록 내용 한 덩어리로 합칩니다.
  * 사례는 번호와 항목 줄, AI 초안 줄, 담당자 수정 줄의 세 줄로 쓰고 사례 사이는 빈 줄로 띄웁니다.
  * 세 칸이 모두 빈 사례는 빼고, 사례 안의 줄바꿈은 표 한 칸에 들어가도록 띄어쓰기로 바꿉니다.
  * 항목이 비면 "사례 1"처럼 번호만 써서 앞의 글이 항목으로 잘못 들어가지 않게 합니다.
+ * 날짜 칸은 빈 줄을 빼고 맨 끝에 붙여, 이어진 줄이 표 하나가 되게 합니다.
  */
-export function joinDescription(body: string, cases: readonly CaseRow[]): string {
+export function joinDescription(body: string, cases: readonly CaseRow[], dates = ''): string {
   const oneLine = (value: string) => value.replace(/\s*\n\s*/g, ' ').trim();
   const blocks = cases
     .map((c) => ({ item: oneLine(c.item).replace(NUMBER, '').replace(/[.。]+$/, ''), draft: oneLine(c.draft), revised: oneLine(c.revised) }))
     .filter((c) => c.item || c.draft || c.revised)
     .map((c, i) => [c.item ? `사례 ${i + 1}. ${c.item}` : `사례 ${i + 1}`, `AI 초안: ${c.draft}`, `담당자 수정: ${c.revised}`].join('\n'));
-  return [body.trim(), ...blocks].filter(Boolean).join('\n\n');
+  const dateLines = dates
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n');
+  return [body.trim(), ...blocks, dateLines].filter(Boolean).join('\n\n');
 }
 
 /**

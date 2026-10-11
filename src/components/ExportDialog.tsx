@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../lib/api';
-import { hasCases, plainRecord } from '../lib/cases';
+import { hasCases, hasDates, plainRecord, withoutDates } from '../lib/cases';
 import { downloadBlob } from '../lib/download';
 import type { Png } from '../lib/images';
 import { READ_ONLY } from '../lib/mode';
@@ -90,10 +90,10 @@ const sameSettings = (a: Settings, b: Settings) => JSON.stringify(a) === JSON.st
 
 /**
  * 다 만든 문서가 지금 고른 값으로 만든 것인지 가리는 열쇠.
- * 설정 값(JSON)과 첫 쪽을 넣었는지, 이미지를 내용 아래에 넣었는지, 날짜를 뺐는지, 표 없는 버전인지로 정합니다.
+ * 설정 값(JSON)과 첫 쪽을 넣었는지, 이미지를 내용 아래에 넣었는지, 날짜를 뺐는지, 표 없는 버전인지, 날짜별로 한 일을 뺐는지로 정합니다.
  */
-const docKeyOf = (settingsKey: string, withForm: boolean, imagesBelow: boolean, hideDates: boolean, plainVersion: boolean) =>
-  `${withForm ? 'report' : 'records'}${imagesBelow ? '+below' : ''}${hideDates ? '+nodate' : ''}${plainVersion ? '+plain' : ''}:${settingsKey}`;
+const docKeyOf = (settingsKey: string, withForm: boolean, imagesBelow: boolean, hideDates: boolean, plainVersion: boolean, noDateTables: boolean) =>
+  `${withForm ? 'report' : 'records'}${imagesBelow ? '+below' : ''}${hideDates ? '+nodate' : ''}${plainVersion ? '+plain' : ''}${noDateTables ? '+nosteps' : ''}:${settingsKey}`;
 
 /** 받을 Word 파일을 만들어 그대로 보여 주고, Word 나 PDF 로 받게 합니다. PDF 도 보여 준 그 문서를 인쇄해 만듭니다. */
 function ExportBody({ records, settings, images, today, onClose, onSaveSettings, onOpenSettings, onCheckRecords }: ExportDialogProps) {
@@ -130,6 +130,8 @@ function ExportBody({ records, settings, images, today, onClose, onSaveSettings,
   // 기록마다 맨 위의 날짜 줄을 뺄지 정합니다.
   // 결과물만 붙여 넣을 때 쓰고, 창을 열 때마다 날짜를 넣는 쪽으로 시작합니다.
   const [hideDates, setHideDates] = useState(false);
+  // 기록 내용 끝의 날짜 표(날짜별로 한 일)를 뺄지 정합니다. 문서를 짧게 낼 때 쓰고, 창을 열 때마다 넣는 쪽으로 시작합니다.
+  const [hideDateTables, setHideDateTables] = useState(false);
   // 창을 열 때 체크돼 있던 기록. 창 안에서 체크를 풀어도 목록에 남겨 두어 다시 넣을 수 있게 합니다.
   const [listed] = useState(() => [...records].sort(byDate));
   const included = useMemo(() => new Set(records.map((r) => r.id)), [records]);
@@ -137,8 +139,14 @@ function ExportBody({ records, settings, images, today, onClose, onSaveSettings,
   // 표가 있는 기록을 다시 고르면 체크해 둔 값으로 돌아갑니다.
   const anyCases = useMemo(() => records.some((r) => hasCases(r.description)), [records]);
   const plainInUse = plainVersion && anyCases;
-  // 문서에 넣는 기록. 표 없는 버전을 고르면 기록마다 그 버전의 제목, 내용, 효과로 바꿉니다.
-  const shown = useMemo(() => (plainInUse ? records.map(plainRecord) : records), [records, plainInUse]);
+  // 기타 기록은 날짜 줄이 곧 본문이라 날짜별로 한 일을 빼도 그대로 둡니다. 그 밖의 기록에 날짜 표가 없으면 옵션을 숨깁니다.
+  const anyDateTables = useMemo(() => records.some((r) => r.type !== 'etc' && (hasDates(r.description) || hasDates(plainRecord(r).description))), [records]);
+  const dateTablesOff = hideDateTables && anyDateTables;
+  // 문서에 넣는 기록. 표 없는 버전을 고르면 기록마다 그 버전의 제목, 내용, 효과로 바꾸고, 날짜별로 한 일을 빼면 날짜 표를 뺍니다.
+  const shown = useMemo(() => {
+    const list = plainInUse ? records.map(plainRecord) : records;
+    return dateTablesOff ? list.map((r) => (r.type === 'etc' ? r : { ...r, description: withoutDates(r.description) })) : list;
+  }, [records, plainInUse, dateTablesOff]);
 
   // 보고 분기는 기록 날짜로 정하고, 고쳐 쓴 값은 그 기간 글을 열쇠로 저장합니다
   const base = useMemo(() => buildReport(shown, settings), [shown, settings]);
@@ -154,7 +162,7 @@ function ExportBody({ records, settings, images, today, onClose, onSaveSettings,
   const [committed, setCommitted] = useState<ReportDraft>(draft);
   const effectiveKey = JSON.stringify(applyDraft(settings, committed, auto, autoText));
   const effective = useMemo(() => JSON.parse(effectiveKey) as Settings, [effectiveKey]);
-  const docKey = docKeyOf(effectiveKey, !skipForm, imagesBelow, hideDates, plainInUse);
+  const docKey = docKeyOf(effectiveKey, !skipForm, imagesBelow, hideDates, plainInUse, dateTablesOff);
   const report = useMemo(() => buildReport(shown, effective), [shown, effective]);
   const fileName = reportFileName(report, effective, !skipForm);
   const pdfName = fileName.replace(/\.docx$/i, '.pdf');
@@ -333,7 +341,7 @@ function ExportBody({ records, settings, images, today, onClose, onSaveSettings,
 
   // 받기를 누른 순간 칸에 보이는 값으로 만든 문서만 받습니다. 아직이면 바로 반영하고 다 만들어지면 받습니다.
   const download = (kind: FileKind) => {
-    const wanted = docKeyOf(JSON.stringify(applyDraft(settings, draft, auto, autoText)), !skipForm, imagesBelow, hideDates, plainInUse);
+    const wanted = docKeyOf(JSON.stringify(applyDraft(settings, draft, auto, autoText)), !skipForm, imagesBelow, hideDates, plainInUse, dateTablesOff);
     if (ready && ready.key === wanted) {
       void deliver(kind, ready.blob);
       return;
@@ -411,6 +419,12 @@ function ExportBody({ records, settings, images, today, onClose, onSaveSettings,
               <label className="check-line export-option">
                 <input type="checkbox" checked={plainVersion} onChange={(e) => setPlainVersion(e.target.checked)} />
                 표 없는 버전으로
+              </label>
+            )}
+            {anyDateTables && (
+              <label className="check-line export-option">
+                <input type="checkbox" checked={hideDateTables} onChange={(e) => setHideDateTables(e.target.checked)} />
+                날짜별로 한 일 빼기
               </label>
             )}
             <label className="check-line export-option">

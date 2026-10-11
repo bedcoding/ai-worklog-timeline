@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { joinDescription, splitDescription } from '../lib/cases';
+import { joinDescription, splitDescription, splitTrailingDates } from '../lib/cases';
 import { isValidISO } from '../lib/dates';
 import { ACCEPT_ATTR, hasFiles, imagesFromClipboard, imagesFromDrop } from '../lib/images';
 import type { ImageEntry, PlainVersion, RecordDraft, Settings, WorkRecord, WorkType } from '../lib/types';
@@ -36,6 +36,7 @@ interface Pending {
 
 const TITLE_HINT = '예: 반복하던 정리 작업을 자동화함';
 const DESCRIPTION_HINT = '무엇을 했고, 도구를 어떻게 썼는지 짧게 적어 보세요.';
+const DATES_HINT = '8. 7. 서버 주소를 한 곳으로 모음\n8. 11.~8. 13. 배너 메뉴를 새 서버로 옮김';
 const EFFECT_HINT = '이전 방식과 비교해 적으면 보고서에 그대로 쓰기 좋아요. 예: 1건에 하루 걸리던 초안이 반나절로 줄었음';
 
 /**
@@ -58,19 +59,24 @@ function RecordForm({ mode, record, initialFiles, defaultDate, settings, images,
   const [type, setType] = useState<WorkType>(record?.type ?? 'dev');
   const [toolIds, setToolIds] = useState<string[]>(record?.toolIds ?? (settings.tools[0] ? [settings.tools[0].id] : []));
   const [title, setTitle] = useState(record?.title ?? '');
-  // 내용 끝의 사례 묶음은 사례 칸으로 꺼내 보여 주고, 저장할 때 다시 내용 끝에 붙입니다
+  // 내용 끝의 사례 묶음과 날짜 줄은 사례 칸과 날짜 칸으로 꺼내 보여 주고, 저장할 때 다시 내용 끝에 붙입니다
   const [initial] = useState(() => splitDescription(record?.description ?? ''));
   const [description, setDescription] = useState(initial.body);
   const [cases, setCases] = useState(() => initial.cases.map((c) => ({ ...c, key: uid() })));
+  const [dates, setDates] = useState(initial.dates);
   // 방금 추가한 사례의 항목 칸에만 포커스를 줍니다
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const [effect, setEffect] = useState(record?.effect ?? '');
   // 제목, 내용, 효과 칸은 고른 버전의 글을 보여 줍니다. 표 없는 버전에서 비워 둔 칸은 표 있는 버전의 글이 흐리게 보입니다.
   const [version, setVersion] = useState<'table' | 'plain'>('table');
   const [plainTitle, setPlainTitle] = useState(record?.plain?.title ?? '');
-  const [plainDescription, setPlainDescription] = useState(record?.plain?.description ?? '');
+  const [plainInitial] = useState(() => splitTrailingDates(record?.plain?.description ?? ''));
+  const [plainDescription, setPlainDescription] = useState(plainInitial.body);
+  const [plainDates, setPlainDates] = useState(plainInitial.dates);
   const [plainEffect, setPlainEffect] = useState(record?.plain?.effect ?? '');
   const isPlain = version === 'plain';
+  // 표 없는 버전의 내용 칸과 날짜 칸은 한 글로 저장되므로, 둘 다 비었을 때만 표 있는 버전의 글을 흐리게 보여 줍니다
+  const plainBlank = !plainDescription.trim() && !plainDates.trim();
   const [limitHit, setLimitHit] = useState(record?.limitHit ?? false);
   const [removed, setRemoved] = useState<string[]>([]);
   const [pending, setPending] = useState<Pending[]>(() => (initialFiles ?? []).map((file) => ({ key: uid(), file })));
@@ -114,8 +120,9 @@ function RecordForm({ mode, record, initialFiles, defaultDate, settings, images,
       return;
     }
     const plain: PlainVersion = {};
+    const plainText = joinDescription(plainDescription, [], plainDates);
     if (plainTitle.trim()) plain.title = plainTitle.trim();
-    if (plainDescription.trim()) plain.description = plainDescription.trim();
+    if (plainText) plain.description = plainText;
     if (plainEffect.trim()) plain.effect = plainEffect.trim();
     setBusy(true);
     setError('');
@@ -126,7 +133,7 @@ function RecordForm({ mode, record, initialFiles, defaultDate, settings, images,
           type,
           toolIds,
           title: cleanTitle,
-          description: joinDescription(description, cases),
+          description: joinDescription(description, cases, dates),
           effect: effect.trim(),
           plain: Object.keys(plain).length ? plain : undefined,
           limitHit,
@@ -223,7 +230,7 @@ function RecordForm({ mode, record, initialFiles, defaultDate, settings, images,
           <textarea
             value={isPlain ? plainDescription : description}
             maxLength={600}
-            placeholder={isPlain ? description.trim() || DESCRIPTION_HINT : DESCRIPTION_HINT}
+            placeholder={isPlain ? (plainBlank && description.trim()) || DESCRIPTION_HINT : DESCRIPTION_HINT}
             onChange={(e) => (isPlain ? setPlainDescription : setDescription)(e.target.value)}
           />
         </label>
@@ -281,6 +288,18 @@ function RecordForm({ mode, record, initialFiles, defaultDate, settings, images,
             </p>
           </div>
         )}
+        <div className="field wide">
+          <span className="field-label">날짜별로 한 일 (선택)</span>
+          <textarea
+            className="dates-input"
+            value={isPlain ? plainDates : dates}
+            maxLength={2000}
+            placeholder={isPlain ? (plainBlank && dates.trim()) || DATES_HINT : DATES_HINT}
+            aria-label="날짜별로 한 일"
+            onChange={(e) => (isPlain ? setPlainDates : setDates)(e.target.value)}
+          />
+          <p className="field-hint">한 줄에 하나씩 날짜로 시작해 두 줄 이상 적으면 Word와 PDF에서 &ldquo;날짜 | 한 일&rdquo; 표로 들어가요.</p>
+        </div>
         <label className="field wide">
           효과와 메모
           <textarea

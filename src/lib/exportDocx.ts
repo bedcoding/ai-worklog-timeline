@@ -12,8 +12,9 @@ import {
   TableRow,
   TextRun,
   WidthType,
+  type ITableCellBorders,
 } from 'docx';
-import { splitCases, type CaseRow } from './cases';
+import { splitContent, type CaseRow, type DateRow } from './cases';
 import { shortDate, weekdayKo } from './dates';
 import { blobToPng, fetchImageBlob, imageSize, type Png } from './images';
 import { buildReport, type ReportLine, type ReportRow } from './report';
@@ -40,6 +41,8 @@ const SMALL_TEXT = 17;
 /** 기록 표: 왼쪽 증빙 칸과 오른쪽 작업 칸의 폭(twip). 합은 양식 표와 같습니다. */
 const SHOT_WIDTH = 5300;
 const NOTE_WIDTH = LABEL_WIDTH + BODY_WIDTH - SHOT_WIDTH;
+/** 기록 내용 안 날짜 표의 날짜 칸 폭(twip). 8. 11.~8. 13. 같은 기간이 한 줄에 들어갑니다. */
+const DATE_WIDTH = 1300;
 /** 증빙 칸에 들어가는 이미지 크기(px). 칸 폭에서 안쪽 여백을 뺀 만큼입니다. */
 const MAX_IMAGE_WIDTH = 330;
 const MAX_IMAGE_HEIGHT = 460;
@@ -89,36 +92,54 @@ function textRuns(text: string, style: { color?: string; size?: number } = {}): 
 /** Word는 칸이 표로 끝나면 문서가 깨졌다고 보므로, 표로 끝나는 칸에는 빈 문단을 붙입니다 */
 const closed = (children: (Paragraph | Table)[]) => (children[children.length - 1] instanceof Table ? [...children, new Paragraph({})] : children);
 
-function cell(children: (Paragraph | Table)[], width: number, shaded = false, columnSpan?: number): TableCell {
+function cell(children: (Paragraph | Table)[], width: number, shaded = false, columnSpan?: number, borders?: ITableCellBorders): TableCell {
   return new TableCell({
     width: { size: width, type: WidthType.DXA },
     margins: CELL_MARGINS,
     shading: shaded ? GRAY : undefined,
     columnSpan,
+    borders,
     children: closed(children),
   });
 }
+
+/** 기록 내용 안 표의 칸 글 */
+const cellText = (value: string, bold = false) => [new Paragraph({ spacing: { line: 276 }, children: [new TextRun({ text: value, bold, size: CELL_TEXT })] })];
 
 /** 기록 내용 안의 사례 표. 작성 예시처럼 항목, AI 초안, 담당자 수정본을 나란히 두고 머리줄과 항목 칸을 회색으로 칠합니다. */
 function caseTable(rows: CaseRow[], width: number): Table {
   const itemWidth = Math.round(width * 0.2);
   const draftWidth = Math.round((width - itemWidth) / 2);
   const widths = [itemWidth, draftWidth, width - itemWidth - draftWidth];
-  const text = (value: string, bold = false) => [new Paragraph({ spacing: { line: 276 }, children: [new TextRun({ text: value, bold, size: CELL_TEXT })] })];
   return new Table({
     width: { size: width, type: WidthType.DXA },
     columnWidths: widths,
     layout: TableLayoutType.FIXED,
     borders: BORDERS,
     rows: [
-      new TableRow({ cantSplit: true, children: ['항목', 'AI 초안', '담당자 수정본'].map((head, i) => cell(text(head, true), widths[i], true)) }),
+      new TableRow({ cantSplit: true, children: ['항목', 'AI 초안', '담당자 수정본'].map((head, i) => cell(cellText(head, true), widths[i], true)) }),
       ...rows.map(
         (row) =>
           new TableRow({
             cantSplit: true,
-            children: [cell(text(row.item, true), widths[0], true), cell(text(row.draft), widths[1]), cell(text(row.revised), widths[2])],
+            children: [cell(cellText(row.item, true), widths[0], true), cell(cellText(row.draft), widths[1]), cell(cellText(row.revised), widths[2])],
           }),
       ),
+    ],
+  });
+}
+
+/** 기록 내용 안의 날짜 표. 날짜와 한 일 두 칸으로 두고 머리줄을 회색으로 칠합니다. */
+function dateTable(rows: DateRow[], width: number): Table {
+  const widths = [DATE_WIDTH, width - DATE_WIDTH];
+  return new Table({
+    width: { size: width, type: WidthType.DXA },
+    columnWidths: widths,
+    layout: TableLayoutType.FIXED,
+    borders: BORDERS,
+    rows: [
+      new TableRow({ cantSplit: true, children: ['날짜', '한 일'].map((head, i) => cell(cellText(head, true), widths[i], true)) }),
+      ...rows.map((row) => new TableRow({ cantSplit: true, children: [cell(cellText(row.date), widths[0]), cell(cellText(row.text), widths[1])] })),
     ],
   });
 }
@@ -287,10 +308,15 @@ export async function buildDocxExport(
           new Paragraph({ spacing: { after: 100, line: 288 }, children: [new TextRun({ text: r.title, bold: true, size: 20 })] }),
         ];
     if (r.limitHit) notes.push(new Paragraph({ spacing: { after: 100 }, children: [new TextRun({ text: '사용 한도 도달', color: MUTED, size: SMALL_TEXT })] }));
-    // 내용에 "AI 초안:"과 "담당자 수정:" 줄이 짝으로 있으면 그 부분만 사례 표로 바꿉니다
-    for (const part of splitCases(r.description.trim())) {
+    // 내용에 "AI 초안:"과 "담당자 수정:" 줄이 짝으로 있으면 그 부분은 사례 표로, 날짜로 시작하는 줄이 이어지면 날짜 표로 바꿉니다
+    const parts = splitContent(r.description.trim());
+    // 이미지를 옆 칸에 넣을 때 내용 맨 끝의 날짜 표는 기록 칸 아래에 표 폭 그대로 따로 넣습니다.
+    // 좁은 오른쪽 칸에 넣으면 기록 한 칸이 A4 한 쪽을 넘기 쉽고, Word는 쪽 사이에서 나누지 않는 칸의 넘친 부분을 잘라 버립니다.
+    const last = parts[parts.length - 1];
+    const trailing = !below && shots.length && last?.kind === 'dates' ? last : undefined;
+    for (const part of trailing ? parts.slice(0, -1) : parts) {
       if (part.kind === 'text') notes.push(new Paragraph({ spacing: { after: 100, line: 288 }, children: textRuns(part.text, { size: CELL_TEXT }) }));
-      else notes.push(caseTable(part.rows, inner), new Paragraph({ spacing: { after: 0, line: 200 } }));
+      else notes.push(part.kind === 'cases' ? caseTable(part.rows, inner) : dateTable(part.rows, inner), new Paragraph({ spacing: { after: 0, line: 200 } }));
     }
     if (r.effect.trim()) {
       notes.push(
@@ -311,8 +337,17 @@ export async function buildDocxExport(
       });
       rows.push(...stackedRows(head, notes, shots));
     } else {
-      const cells = shots.length ? [cell(shots, SHOT_WIDTH), cell(notes, NOTE_WIDTH)] : [cell(notes, SHOT_WIDTH + NOTE_WIDTH, false, 2)];
+      // 날짜 표 줄을 아래에 붙일 때는 사이 선을 지워 한 기록으로 보이게 합니다
+      const open = trailing ? { bottom: NO_BORDER } : undefined;
+      const cells = shots.length
+        ? [cell(shots, SHOT_WIDTH, false, undefined, open), cell(notes, NOTE_WIDTH, false, undefined, open)]
+        : [cell(notes, SHOT_WIDTH + NOTE_WIDTH, false, 2)];
       rows.push(new TableRow({ cantSplit: true, children: cells }));
+      if (trailing) {
+        const wide = SHOT_WIDTH + NOTE_WIDTH - CELL_MARGINS.left - CELL_MARGINS.right;
+        const table = [dateTable(trailing.rows, wide), new Paragraph({ spacing: { after: 0, line: 200 } })];
+        rows.push(new TableRow({ cantSplit: true, children: [cell(table, SHOT_WIDTH + NOTE_WIDTH, false, 2, { top: NO_BORDER })] }));
+      }
     }
   }
   children.push(

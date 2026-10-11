@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { hasCases, joinDescription, plainRecord, splitCases, splitDescription, withoutCases } from './cases';
+import {
+  hasCases,
+  hasDates,
+  joinDescription,
+  plainRecord,
+  splitCases,
+  splitContent,
+  splitDates,
+  splitDescription,
+  splitTrailingDates,
+  withoutCases,
+  withoutDates,
+} from './cases';
 import type { WorkRecord } from './types';
 
 describe('사례 나누기', () => {
@@ -48,6 +60,55 @@ describe('사례 나누기', () => {
   });
 });
 
+describe('날짜 표', () => {
+  it('날짜나 기간으로 시작하는 줄이 두 줄 이상 이어지면 날짜 표로 꺼낸다', () => {
+    const text = ['메뉴를 차례로 옮김.', '8. 7. 홈페이지 메뉴 전환', '8. 11.~8. 13. 배너 메뉴 전환', '마지막 설명.'].join('\n');
+    expect(splitDates(text)).toEqual([
+      { kind: 'text', text: '메뉴를 차례로 옮김.' },
+      {
+        kind: 'dates',
+        rows: [
+          { date: '8. 7.', text: '홈페이지 메뉴 전환' },
+          { date: '8. 11.~8. 13.', text: '배너 메뉴 전환' },
+        ],
+      },
+      { kind: 'text', text: '마지막 설명.' },
+    ]);
+  });
+
+  it('표 없는 버전의 8/7, 8/11 ~ 8/13 꼴 날짜도 알아본다', () => {
+    expect(splitDates('8/7 홈페이지 전환\n8/11 ~ 8/13 배너 전환')).toEqual([
+      {
+        kind: 'dates',
+        rows: [
+          { date: '8/7', text: '홈페이지 전환' },
+          { date: '8/11 ~ 8/13', text: '배너 전환' },
+        ],
+      },
+    ]);
+  });
+
+  it('날짜 줄이 한 줄뿐이거나 날짜 뒤에 글자가 바로 붙으면 글로 둔다', () => {
+    expect(splitDates('개요.\n9. 16. 배포함.')).toEqual([{ kind: 'text', text: '개요.\n9. 16. 배포함.' }]);
+    expect(splitDates('4. 6.에 만듦.\n4. 7.에 고침.')).toEqual([{ kind: 'text', text: '4. 6.에 만듦.\n4. 7.에 고침.' }]);
+  });
+
+  it('사례 표와 날짜 표를 쓴 순서대로 나눈다', () => {
+    const text = joinDescription('개요.', [{ item: '정렬 기준', draft: '가', revised: '나' }], '8. 7. 시작\n8. 8. 마침');
+    expect(splitContent(text).map((p) => p.kind)).toEqual(['text', 'cases', 'dates']);
+  });
+
+  it('날짜별로 한 일을 빼면 날짜 표가 될 줄만 빼고 글과 사례 줄은 남긴다', () => {
+    const cases = [{ item: '정렬 기준', draft: '가', revised: '나' }];
+    const text = joinDescription('개요.', cases, '8. 7. 시작\n8. 8. 마침');
+    expect(hasDates(text)).toBe(true);
+    expect(withoutDates(text)).toBe(joinDescription('개요.', cases));
+    expect(hasDates(withoutDates(text))).toBe(false);
+    // 한 줄뿐인 날짜 줄은 표가 아니라 글이라서 남긴다
+    expect(withoutDates('개요.\n9. 16. 배포함.')).toBe('개요.\n9. 16. 배포함.');
+  });
+});
+
 describe('입력 화면의 내용 칸과 사례 칸', () => {
   const saved = [
     '기획 화면으로 초안을 받음.',
@@ -70,7 +131,25 @@ describe('입력 화면의 내용 칸과 사례 칸', () => {
 
   it('사례 뒤에 글이 더 있으면 나누지 않고 쓴 글을 그대로 내용 칸에 둔다', () => {
     const text = `${saved}\n\n마지막 설명.`;
-    expect(splitDescription(text)).toEqual({ body: text, cases: [] });
+    expect(splitDescription(text)).toEqual({ body: text, cases: [], dates: '' });
+  });
+
+  it('사례 뒤에 이어 쓴 날짜 줄은 날짜 칸으로 나누고, 다시 합치면 저장된 글과 같다', () => {
+    const text = `${saved}\n\n8. 7. 홈페이지 메뉴 전환\n8. 11.~8. 13. 배너 메뉴 전환`;
+    const { body, cases, dates } = splitDescription(text);
+    expect(body).toBe('기획 화면으로 초안을 받음.');
+    expect(cases.map((c) => c.item)).toEqual(['정렬 기준', '빈 결과']);
+    expect(dates).toBe('8. 7. 홈페이지 메뉴 전환\n8. 11.~8. 13. 배너 메뉴 전환');
+    expect(joinDescription(body, cases, dates)).toBe(text);
+  });
+
+  it('사례가 없는 글에서도 끝에 이어 쓴 날짜 줄만 떼어 낸다', () => {
+    expect(splitTrailingDates('개요.\n8/7 홈페이지 전환\n8/11~8/13 배너 전환')).toEqual({ body: '개요.', dates: '8/7 홈페이지 전환\n8/11~8/13 배너 전환' });
+    expect(splitTrailingDates('8. 7.에 시작함.')).toEqual({ body: '8. 7.에 시작함.', dates: '' });
+  });
+
+  it('합칠 때 날짜 칸의 빈 줄과 앞뒤 공백은 빼고 내용 맨 끝에 붙인다', () => {
+    expect(joinDescription('개요.', [], '8. 7. 시작\n\n  8. 8. 마침  \n')).toBe('개요.\n\n8. 7. 시작\n8. 8. 마침');
   });
 
   it('합칠 때 빈 사례는 빼고, 항목의 번호와 끝 온점을 떼고, 줄바꿈은 띄어쓰기로 바꾼다', () => {
@@ -124,6 +203,11 @@ describe('표 없는 버전', () => {
   it('사례 묶음을 빼고 글만 남긴다', () => {
     expect(withoutCases(withCases)).toBe('초안을 받아 화면을 만듦.');
     expect(withoutCases('사례 없는 글.\n둘째 줄.')).toBe('사례 없는 글.\n둘째 줄.');
+  });
+
+  it('사례 표를 빼도 날짜 줄은 남겨서 표 없는 버전에도 날짜 표가 들어간다', () => {
+    const text = joinDescription('개요.', [{ item: '정렬 기준', draft: '가', revised: '나' }], '8. 7. 시작\n8. 8. 마침');
+    expect(withoutCases(text)).toBe('개요.\n\n8. 7. 시작\n8. 8. 마침');
   });
 
   it('따로 쓴 제목, 내용, 효과가 있으면 그 글을 쓴다', () => {

@@ -469,6 +469,10 @@ dialog:focus {
   font-weight: 400;
   color: var(--muted);
 }
+/* 날짜별로 한 일 칸은 여러 줄 목록이라 처음부터 일곱 줄쯤 보이게 둡니다 */
+.field textarea.dates-input {
+  min-height: 150px;
+}
 /* 사례 칸: 항목 아래에 AI 초안과 담당자 수정을 나란히 적고, 내보내면 표 한 줄이 됩니다 */
 .case-list {
   display: flex;
@@ -513,14 +517,16 @@ dialog:focus {
   }
 }
 
-/* 상세 화면의 기록 내용: 글은 쓴 줄 그대로 보이고, 사례는 항목을 머리로 둔 세로 표로 보입니다 */
+/* 상세 화면의 기록 내용: 글은 쓴 줄 그대로 보이고, 사례는 항목을 머리로 둔 세로 표로, 이어 쓴 날짜 줄은 두 칸 표로 보입니다 */
 .description p {
   margin: 0;
   white-space: pre-line;
 }
 .description p + p,
 .description p + .case-tables,
-.description .case-tables + p {
+.description .case-tables + p,
+.description * + .date-table,
+.description .date-table + * {
   margin-top: 10px;
 }
 .case-tables {
@@ -528,25 +534,37 @@ dialog:focus {
   flex-direction: column;
   gap: 8px;
 }
-.case-table {
+.case-table,
+.date-table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
   font-size: 11px;
   line-height: 1.6;
   color: var(--ink);
 }
+.case-table {
+  table-layout: fixed;
+}
 .case-table th,
-.case-table td {
+.case-table td,
+.date-table th,
+.date-table td {
   padding: 6px 8px;
   border: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
   word-break: keep-all;
 }
-.case-table thead th {
+.case-table thead th,
+.date-table thead th {
   background: #e7ebe0;
   font-weight: 600;
+}
+/* 날짜 칸은 8. 11.~8. 13. 같은 기간이 한 줄에 들어가는 만큼만 씁니다 */
+.date-table td:first-child {
+  width: 1%;
+  white-space: nowrap;
+  color: var(--muted);
 }
 .case-table tbody th {
   width: 6.2em;

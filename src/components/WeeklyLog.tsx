@@ -308,7 +308,6 @@ function WorkRow({ record: r, active, checked, thumb, onCheck, onOpen, onToggleF
           <span className="row-category" style={{ '--tint': type.tint, '--category-color': type.ink } as CSSProperties}>
             {type.label}
           </span>
-          {r.limitHit && <span className="row-flag">한도 도달</span>}
         </span>
         <span className="row-title">{r.title}</span>
         {/* 목록에서는 한 줄만 보이므로 사례 줄은 빼고 앞의 설명만 보여 줍니다 */}
@@ -331,9 +330,6 @@ function WorkRow({ record: r, active, checked, thumb, onCheck, onOpen, onToggleF
             <IconStar />
           </button>
         )}
-        <button type="button" className="row-open" aria-label={`${r.title} 상세 보기`} onClick={onOpen}>
-          ↗
-        </button>
       </div>
     </article>
   );

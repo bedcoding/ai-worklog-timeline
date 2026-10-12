@@ -1,4 +1,4 @@
-import { dateOf, fromDay, monthOf, quarterOfMonth, quarterRange, shortDate, toDay, yearOf, type DayRange } from './dates';
+import { dateOf, fromDay, monthOf, quarterOfMonth, quarterRange, toDay, yearOf, type DayRange } from './dates';
 import type { ReportField, Settings, Tool, WorkRecord } from './types';
 import { formatHours, safeFileName } from './util';
 import { WORK_TYPES, WORK_TYPE_ORDER } from './workTypes';
@@ -194,7 +194,7 @@ export function buildReport(records: readonly WorkRecord[], settings: Settings):
     outputs.push({ text: '[기록이 없어요]', muted: true });
   }
 
-  // 활용 사례와 효과: 최근 기록부터. 양식 예시처럼 한계도 이 칸에 적습니다.
+  // 활용 사례와 효과: 최근 기록부터 적습니다.
   // 자잘한 작업을 묶은 기타 기록은 큰 작업 뒤로 보내서, 여섯 줄 안에 큰 작업이 먼저 들어가게 합니다.
   const withEffect = [...list]
     .reverse()
@@ -203,12 +203,6 @@ export function buildReport(records: readonly WorkRecord[], settings: Settings):
   const effects: ReportLine[] = withEffect.slice(0, 6).map((r) => ({ head: r.title, text: oneLine(r.effect) }));
   if (withEffect.length > 6) effects.push({ text: `그 밖에 효과를 적은 기록 ${withEffect.length - 6}건` });
   if (!withEffect.length) effects.push({ text: '[업무별로 이전 방식과 지금을 비교한 효과]', muted: true });
-  const hits = list.filter((r) => r.limitHit);
-  effects.push({
-    head: '한계',
-    text: hits.length ? `사용 한도 도달 ${hits.length}회(${hits.map((r) => shortDate(r.date)).join(', ')})` : '사용 한도에 도달한 기록 없음',
-    gap: true,
-  });
 
   // 부서장 의견: 부서장이 도구별로 적는 칸이라 자리만 만들어 둡니다
   const opinion: ReportLine[] = settings.tools.length

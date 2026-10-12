@@ -196,7 +196,6 @@ export function DetailDialog(props: DetailDialogProps) {
                 <span className="tag" style={{ color: WORK_TYPES[record.type].tagInk }}>
                   {WORK_TYPES[record.type].label}
                 </span>
-                {record.limitHit && <span className="tag limit-tag">사용 한도 도달</span>}
                 {record.featured && (
                   <span className="tag featured-tag">
                     <IconStar />

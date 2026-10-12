@@ -19,7 +19,6 @@ function rec(id: string, date: string, title: string, patch: Partial<WorkRecord>
     title,
     description: `${title} 설명`,
     effect: '',
-    limitHit: false,
     images: [],
     sample: false,
     createdAt: 1,

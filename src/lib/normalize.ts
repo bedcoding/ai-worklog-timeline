@@ -99,7 +99,7 @@ export function normalizeRecord(raw: unknown): WorkRecord | null {
     effect: str(r.effect),
     ...(plain ? { plain } : {}),
     toolIds: Array.isArray(r.toolIds) ? r.toolIds.filter((t): t is string => typeof t === 'string') : [],
-    limitHit: r.limitHit === true,
+    // 예전 기록에 남아 있는 사용 한도 도달(limitHit) 칸은 더 쓰지 않아서 읽지 않고, 다시 저장할 때 빠집니다
     ...(r.featured === true ? { featured: true } : {}),
     sample: r.sample === true,
     images,

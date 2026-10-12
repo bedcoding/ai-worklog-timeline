@@ -357,12 +357,6 @@ dialog:focus {
   width: 20px;
   height: 20px;
 }
-.row-flag {
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: #f7ece4;
-  color: #9a6a4b;
-}
 .text-button:disabled {
   opacity: 0.4;
 }
@@ -440,10 +434,6 @@ dialog:focus {
 }
 .meta-slash {
   color: #ced4c6;
-}
-.tag.limit-tag {
-  background: #f7ece4;
-  color: #9a6a4b;
 }
 /* 대표 업무: 상세 화면 날짜 옆 태그, 목록 맨 위 묶음 이름, 상세 화면 위쪽 별 단추, 목록 행의 별 단추 */
 .tag.featured-tag {

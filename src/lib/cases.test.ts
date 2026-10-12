@@ -185,7 +185,6 @@ describe('표 없는 버전', () => {
     title: '정렬 화면',
     description: withCases,
     effect: '초안을 하루 만에 받음.',
-    limitHit: false,
     images: [],
     sample: false,
     createdAt: 1,

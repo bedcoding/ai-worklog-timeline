@@ -26,8 +26,6 @@ export interface WorkRecord {
   effect: string;
   /** 표 없는 버전으로 따로 쓴 글. 위의 제목, 내용, 효과는 표 있는 버전입니다. */
   plain?: PlainVersion;
-  /** 이 작업 중에 사용 한도에 도달했는지 */
-  limitHit: boolean;
   /**
    * 대표 업무인지.
    * 목록 맨 위 대표 업무 묶음으로 올리고 타임라인 점과 목록에 별을 붙입니다.
@@ -103,6 +101,5 @@ export interface RecordDraft {
   description: string;
   effect: string;
   plain?: PlainVersion;
-  limitHit: boolean;
   featured?: boolean;
 }

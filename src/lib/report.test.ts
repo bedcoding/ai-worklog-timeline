@@ -23,7 +23,6 @@ function rec(date: string, patch: Partial<WorkRecord> = {}): WorkRecord {
     title: `기록 ${seq}`,
     description: '',
     effect: '',
-    limitHit: false,
     images: [],
     sample: false,
     createdAt: seq,
@@ -43,7 +42,7 @@ describe('buildReport', () => {
   const q3 = [
     rec('2026-09-24', { type: 'design', toolIds: ['img'], title: '아이콘 시안', description: '아이콘 시안 12개를 만들고\n4개를 골랐음' }),
     rec('2026-07-03', { type: 'doc', title: '업무 매뉴얼 초안', effect: '손으로 하던 목차 정리를\n템플릿으로 바꿈' }),
-    rec('2026-08-12', { type: 'dev', toolIds: ['claude'], limitHit: true }),
+    rec('2026-08-12', { type: 'dev', toolIds: ['claude'] }),
   ];
   const report = buildReport(q3, settings);
 
@@ -78,11 +77,12 @@ describe('buildReport', () => {
     expect(cell(report, 'outputs')).toContain('전체 3건, 기록한 날 3일');
   });
 
-  it('효과는 한 줄로 합치고 한계를 붙인다', () => {
+  it('효과는 한 줄로 합치고, 사용 한도 같은 한계 줄은 따로 붙이지 않는다', () => {
     const text = cell(report, 'effects');
     expect(text).toContain('업무 매뉴얼 초안  손으로 하던 목차 정리를 템플릿으로 바꿈');
     expect(text).not.toContain('절감');
-    expect(text).toContain('한계  사용 한도 도달 1회(8/12)');
+    expect(text).not.toContain('한계');
+    expect(text).not.toContain('한도');
   });
 
   it('효과는 큰 작업을 최근 것부터 적고 기타로 묶은 기록은 그 뒤에 적는다', () => {

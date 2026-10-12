@@ -77,7 +77,6 @@ function RecordForm({ mode, record, initialFiles, defaultDate, settings, images,
   const isPlain = version === 'plain';
   // 표 없는 버전의 내용 칸과 날짜 칸은 한 글로 저장되므로, 둘 다 비었을 때만 표 있는 버전의 글을 흐리게 보여 줍니다
   const plainBlank = !plainDescription.trim() && !plainDates.trim();
-  const [limitHit, setLimitHit] = useState(record?.limitHit ?? false);
   const [featured, setFeatured] = useState(record?.featured ?? false);
   const [removed, setRemoved] = useState<string[]>([]);
   const [pending, setPending] = useState<Pending[]>(() => (initialFiles ?? []).map((file) => ({ key: uid(), file })));
@@ -137,7 +136,6 @@ function RecordForm({ mode, record, initialFiles, defaultDate, settings, images,
           description: joinDescription(description, cases, dates),
           effect: effect.trim(),
           plain: Object.keys(plain).length ? plain : undefined,
-          limitHit,
           featured,
         },
         pending.map((p) => p.file),
@@ -314,11 +312,7 @@ function RecordForm({ mode, record, initialFiles, defaultDate, settings, images,
         <div className="field wide checks">
           <label className="check-line">
             <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} />
-            대표 업무로 표시(목록 맨 위로 올리고 별을 붙임)
-          </label>
-          <label className="check-line">
-            <input type="checkbox" checked={limitHit} onChange={(e) => setLimitHit(e.target.checked)} />
-            이 작업 중 도구 사용 한도에 도달
+            대표 업무로 표시
           </label>
         </div>
         <div className="field wide">

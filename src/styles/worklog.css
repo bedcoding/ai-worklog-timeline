@@ -1679,13 +1679,6 @@ main {
   stroke: #668937;
   stroke-width: 1.6;
 }
-.row-open {
-  border: 0;
-  background: transparent;
-  font-size: 15px;
-  color: #899777;
-  padding: 9px;
-}
 .log-empty {
   padding: 40px 20px;
   border: 1px solid var(--line);

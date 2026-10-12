@@ -298,7 +298,7 @@ export async function buildDocxExport(
       options.onProgress?.(done, total);
     }
 
-    // 유형과 도구는 첫 쪽 표에 모아 적으므로 기록마다 되풀이하지 않습니다. 사용 한도에 닿은 기록만 표시합니다.
+    // 유형과 도구는 첫 쪽 표에 모아 적으므로 기록마다 되풀이하지 않습니다.
     // 사례 표는 기록 칸 안쪽 폭에 맞춥니다
     const inner = (below || !shots.length ? SHOT_WIDTH + NOTE_WIDTH : NOTE_WIDTH) - CELL_MARGINS.left - CELL_MARGINS.right;
     const day = `${shortDate(r.date)} ${weekdayKo(r.date)}`;
@@ -312,7 +312,6 @@ export async function buildDocxExport(
             : [new Paragraph({ keepNext: true, spacing: { after: 40 }, children: [new TextRun({ text: day, color: MUTED, size: SMALL_TEXT })] })]),
           new Paragraph({ keepNext: true, spacing: { after: 100, line: 288 }, children: [new TextRun({ text: r.title, bold: true, size: 20 })] }),
         ];
-    if (r.limitHit) notes.push(new Paragraph({ spacing: { after: 100 }, children: [new TextRun({ text: '사용 한도 도달', color: MUTED, size: SMALL_TEXT })] }));
     // 내용에 "AI 초안:"과 "담당자 수정:" 줄이 짝으로 있으면 그 부분은 사례 표로, 날짜로 시작하는 줄이 이어지면 날짜 표로 바꿉니다
     const parts = splitContent(r.description.trim());
     // 이미지를 옆 칸에 넣을 때 내용 맨 끝의 날짜 표는 기록 칸 아래에 표 폭 그대로 따로 넣습니다.

@@ -10,7 +10,6 @@ const rec = (id: string, date: string): WorkRecord => ({
   title: id,
   description: '',
   effect: '',
-  limitHit: false,
   images: [],
   sample: true,
   createdAt: 1,

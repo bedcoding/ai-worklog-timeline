@@ -165,6 +165,12 @@ export function mergeRanges(ranges: readonly DayRange[]): DayRange[] {
   return merged;
 }
 
+/** 기록이 걸친 기간. 하루면 9/22, 여러 날이면 7/7 ~ 9/21 */
+export function spanLabel(span: DayRange): string {
+  const start = shortDate(fromDay(span.start));
+  return span.start === span.end ? start : `${start} ~ ${shortDate(fromDay(span.end))}`;
+}
+
 /** 2026.07.01 ~ 2026.09.30 */
 export function rangeCaption(range: DayRange): string {
   return `${fromDay(range.start).replaceAll('-', '.')} ~ ${fromDay(range.end).replaceAll('-', '.')}`;

@@ -13,6 +13,7 @@ import {
   periodRange,
   quarterRange,
   shiftPeriod,
+  spanLabel,
   stampLabel,
   toDay,
   yearOptions,
@@ -103,6 +104,12 @@ describe('dates', () => {
     ]);
     // 받은 목록은 건드리지 않습니다
     expect(ranges[0]).toEqual({ start: 3, end: 7 });
+  });
+
+  it('기록이 걸친 기간은 하루면 날짜 하나, 여러 날이면 첫날과 마지막 날로 적는다', () => {
+    expect(spanLabel({ start: toDay('2026-09-22'), end: toDay('2026-09-22') })).toBe('9/22');
+    expect(spanLabel({ start: toDay('2026-07-07'), end: toDay('2026-09-21') })).toBe('7/7 ~ 9/21');
+    expect(spanLabel({ start: toDay('2025-12-22'), end: toDay('2026-01-05') })).toBe('12/22 ~ 1/5');
   });
 
   it('시각은 PC 시간대 기준 날짜와 시분으로 보여 주고, 읽을 수 없으면 비운다', () => {

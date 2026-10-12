@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { workSpan } from '../lib/cases';
-import { fromDay, mergeRanges, shortDate, toDay, weekdayOfDay, type DayRange } from '../lib/dates';
+import { fromDay, mergeRanges, shortDate, spanLabel, toDay, weekdayOfDay, type DayRange } from '../lib/dates';
 import { restSpans } from '../lib/holidays';
 import type { ImageEntry, ViewKind, WorkRecord } from '../lib/types';
 import { clamp } from '../lib/util';
@@ -61,10 +61,10 @@ export function Timeline({ records, allRecords, range, view, today, selectedId, 
       const day = toDay(record.date);
       const lane = perDay.get(day) ?? 0;
       perDay.set(day, lane + 1);
-      // 기록이 걸친 기간. 지금 보는 기간 밖으로 나간 부분은 자릅니다.
+      // 기록이 걸친 기간(work)과, 트랙에 칠하려고 지금 보는 기간 밖으로 나간 부분을 자른 기간(span)
       const work = workSpan(record);
       const span = { start: Math.max(work.start, range.start), end: Math.min(work.end, range.end) };
-      return { record, day, lane, span };
+      return { record, day, lane, work, span };
     });
   }, [records, range.start, range.end]);
   // 기록들이 걸친 기간을 겹치거나 맞붙은 것끼리 이어서 트랙에 칠합니다.
@@ -194,8 +194,8 @@ export function Timeline({ records, allRecords, range, view, today, selectedId, 
   };
 
   const tipId = hoverId ?? focusTipId;
-  const tipRecord = tipId ? records.find((r) => r.id === tipId) : undefined;
-  const tipSpan = tipId ? layout.find((p) => p.record.id === tipId)?.span : undefined;
+  const tipPoint = tipId ? layout.find((p) => p.record.id === tipId) : undefined;
+  const tipRecord = tipPoint?.record;
   const tipAnchor = tipRecord ? pointRefs.current.get(tipRecord.id) : undefined;
   const tipImage = tipRecord?.images[0] ? images.get(tipRecord.images[0].id)?.url : undefined;
 
@@ -232,7 +232,7 @@ export function Timeline({ records, allRecords, range, view, today, selectedId, 
             {workBands.map((band) => (
               <div key={band.start} className="track-work" style={spanStyle(band)} />
             ))}
-            {tipRecord && tipSpan && <div className="track-active" style={{ ...spanStyle(tipSpan), background: WORK_TYPES[tipRecord.type].color }} />}
+            {tipPoint && <div className="track-active" style={{ ...spanStyle(tipPoint.span), background: WORK_TYPES[tipPoint.record.type].color }} />}
           </div>
           <div className="ticks" style={{ transform: `translateY(${extra}px)` }}>
             {decorations.ticks}
@@ -283,12 +283,12 @@ export function Timeline({ records, allRecords, range, view, today, selectedId, 
       </div>
       {/* 가로로 길게 스크롤되는 보기에서도 보이는 영역 가운데에 오도록 스크롤 밖에 둡니다 */}
       {!records.length && <p className="timeline-empty">이 기간에는 기록이 없어요.</p>}
-      {tipRecord && tipAnchor && createPortal(<TimelineTooltip record={tipRecord} anchor={tipAnchor} imageUrl={tipImage} />, document.body)}
+      {tipPoint && tipAnchor && createPortal(<TimelineTooltip record={tipPoint.record} work={tipPoint.work} anchor={tipAnchor} imageUrl={tipImage} />, document.body)}
     </div>
   );
 }
 
-function TimelineTooltip({ record, anchor, imageUrl }: { record: WorkRecord; anchor: HTMLElement; imageUrl?: string }) {
+function TimelineTooltip({ record, work, anchor, imageUrl }: { record: WorkRecord; work: DayRange; anchor: HTMLElement; imageUrl?: string }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -326,7 +326,8 @@ function TimelineTooltip({ record, anchor, imageUrl }: { record: WorkRecord; anc
         </div>
       )}
       <small>
-        {shortDate(record.date)} {WORK_TYPES[record.type].label}
+        {/* 점은 기록 날짜에 찍히지만, 며칠 걸린 기록은 걸친 기간 전체를 적습니다(보는 기간 밖으로 이어져도 자르지 않음) */}
+        {spanLabel(work)} {WORK_TYPES[record.type].label}
       </small>
       <strong>{record.title}</strong>
       <div className="tip-instruction">클릭하면 증빙을 크게 볼 수 있어요.</div>

@@ -160,23 +160,29 @@ describe('Word 내보내기', () => {
     expect(below.body).toContain(`cx="${620 * 9525}" cy="${168 * 9525}"`);
   });
 
-  it('내용 아래에 넣는 이미지가 여러 장이면 첫 장은 내용과 같은 줄에, 나머지는 한 장씩 다음 줄에 넣고 줄 사이에 선을 긋지 않는다', async () => {
+  it('내용 아래에 넣으면 내용은 쪽 사이에서 나뉠 수 있는 줄에, 이미지는 한 장씩 나뉘지 않는 줄에 넣고 줄 사이에 선을 긋지 않는다', async () => {
     const shots = ['img1', 'img2', 'img3'].map((id) => ({ id, label: '화면 캡처', name: `${id}.png` }));
     const list = [rec('a', '2026-07-14', '목록 화면 개선', { images: shots }), rec('b', '2026-08-07', '날짜 입력 버그 수정')];
     const { body } = await build({ includeForm: false, imagesBelow: true }, list);
-    // 기록 a는 제목 줄과 세 줄, 기록 b는 제목 줄과 한 줄입니다
+    // 기록 a는 제목, 내용, 이미지 세 줄이고, 기록 b는 제목과 내용 줄입니다
     const rows = body.split('<w:tr>').slice(1);
-    expect(rows).toHaveLength(6);
+    expect(rows).toHaveLength(7);
     expect(rows[0]).toContain('목록 화면 개선');
     expect(rows[0]).not.toContain('<w:drawing>');
-    expect(rows[1]).toContain('<w:drawing>');
-    expect(rows[2]).toContain('<w:drawing>');
-    expect(rows[3]).toContain('<w:drawing>');
-    expect(rows[4]).toContain('날짜 입력 버그 수정');
-    // 기록 a의 내용과 이미지 줄 사이 두 곳만 선을 지웁니다
-    expect(body.match(/<w:bottom w:val="nil"/g)).toHaveLength(2);
-    expect(body.match(/<w:top w:val="nil"/g)).toHaveLength(2);
-    expect(rows[4] + rows[5]).not.toContain('w:val="nil"');
+    // 내용이 길어져도 제목 바로 아래부터 이어 쓰도록 내용 줄은 쪽 사이에서 나뉠 수 있습니다
+    expect(rows[1]).toContain('목록 화면 개선 설명');
+    expect(rows[1]).not.toContain('<w:drawing>');
+    expect(rows[1]).not.toContain('<w:cantSplit/>');
+    // 이미지는 한 장씩 쪽 사이에서 잘리지 않는 줄에 넣습니다
+    for (const row of rows.slice(2, 5)) {
+      expect(row).toContain('<w:drawing>');
+      expect(row).toContain('<w:cantSplit/>');
+    }
+    expect(rows[5]).toContain('날짜 입력 버그 수정');
+    // 기록 a의 내용과 이미지 줄 사이 세 곳만 선을 지웁니다
+    expect(body.match(/<w:bottom w:val="nil"/g)).toHaveLength(3);
+    expect(body.match(/<w:top w:val="nil"/g)).toHaveLength(3);
+    expect(rows[5] + rows[6]).not.toContain('w:val="nil"');
   });
 
   it('이미지를 내용 아래에 넣으면 날짜와 제목을 회색 제목 줄로 따로 두고, 다음 줄과 같은 쪽에 붙인다', async () => {

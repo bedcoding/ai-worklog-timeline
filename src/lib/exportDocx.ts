@@ -48,7 +48,8 @@ const MAX_IMAGE_WIDTH = 330;
 const MAX_IMAGE_HEIGHT = 460;
 /**
  * 이미지를 내용 아래에 넣을 때 이미지 크기(px).
- * 폭은 표 폭에서 안쪽 여백을 뺀 만큼이고, 높이는 내용과 첫 이미지가 한 쪽에 같이 들어가게 정했습니다.
+ * 폭은 표 폭에서 안쪽 여백을 뺀 만큼입니다.
+ * 이미지는 한 장씩 통째로 다음 쪽으로 넘어가므로, 높이는 그때 생기는 빈 곳이 반 쪽 남짓을 넘지 않게 정했습니다.
  */
 const WIDE_IMAGE_WIDTH = 620;
 const WIDE_IMAGE_HEIGHT = 560;
@@ -186,20 +187,21 @@ const headCell = (text: string, width: number) =>
 /**
  * 이미지를 내용 아래에 넣는 기록의 줄들입니다.
  * 맨 위 줄에는 날짜와 제목만 담고 회색으로 칠해서, 기록이 어디서 시작하는지 보이게 합니다.
- * 그다음 줄에 내용, 효과와 첫 이미지를 담고, 그 아래 줄부터 이미지를 한 장씩 담습니다.
- * 쪽은 줄 사이에서 넘어가므로 이미지가 많아도 한 장이 잘리지 않습니다.
+ * 그다음 줄에 내용과 효과를 담고, 그 아래 줄부터 이미지를 한 장씩 담습니다.
+ * 내용 줄은 쪽 사이에서 나뉠 수 있어서, 사례 표와 날짜 표로 길어져도 제목 바로 아래부터 이어서 씁니다.
+ * 이미지 줄은 나뉘지 않게 해서 한 장이 쪽 사이에서 잘리지 않고 통째로 다음 쪽으로 넘어갑니다.
  * 제목 줄은 다음 줄과 같은 쪽에 붙여 두어 제목만 쪽 끝에 남지 않게 합니다.
  * 내용과 이미지 줄 사이에는 선을 긋지 않아 한 칸처럼 보입니다.
  */
 function stackedRows(head: Paragraph, notes: (Paragraph | Table)[], shots: Paragraph[]): TableRow[] {
   const width = { size: SHOT_WIDTH + NOTE_WIDTH, type: WidthType.DXA };
-  const parts = [[...notes, ...shots.slice(0, 1)], ...shots.slice(1).map((shot) => [shot])].filter((children) => children.length);
+  const parts = [...(notes.length ? [{ children: notes, text: true }] : []), ...shots.map((shot) => ({ children: [shot], text: false }))];
   return [
     new TableRow({ cantSplit: true, children: [new TableCell({ width, margins: CELL_MARGINS, shading: GRAY, children: [head] })] }),
     ...parts.map(
-      (children, i) =>
+      ({ children, text }, i) =>
         new TableRow({
-          cantSplit: true,
+          cantSplit: !text,
           children: [
             new TableCell({
               width,

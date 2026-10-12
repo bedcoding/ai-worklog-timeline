@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { fromDay, shortDate, toDay, weekdayOfDay, type DayRange } from '../lib/dates';
+import { restSpans } from '../lib/holidays';
 import type { ImageEntry, ViewKind, WorkRecord } from '../lib/types';
 import { clamp } from '../lib/util';
 import { WORK_TYPES } from '../lib/workTypes';
@@ -61,18 +62,31 @@ export function Timeline({ records, range, view, today, selectedId, images, rese
   const extra = Math.max(reservedLanes, maxLane) * LANE_GAP;
 
   const decorations = useMemo(() => {
-    const bands: React.ReactNode[] = [];
     const bounds: React.ReactNode[] = [];
     const ticks: React.ReactNode[] = [];
     const total = range.end - range.start + 1;
+    // 주말과 공휴일이 이어진 날은 띠 하나로 칠하고, 공휴일이 들면 이름을 띠 위쪽에 적습니다.
+    // 연도별 보기는 주말 띠가 촘촘한 줄무늬가 되어서 공휴일이 든 띠만 칠합니다.
+    const bands = restSpans(range)
+      .filter((span) => view !== 'year' || span.names.length > 0)
+      .map((span) => (
+        <div
+          key={`b${span.start}`}
+          className={`rest-band${span.names.length ? ' is-holiday' : ''}`}
+          style={{ left: `${((span.start - range.start) / total) * 100}%`, width: `${((span.end - span.start + 1) / total) * 100}%` }}
+          aria-hidden="true"
+        >
+          {span.names.length > 0 && (
+            <span className="rest-name">
+              <span>{span.names.join(', ')}</span>
+            </span>
+          )}
+        </div>
+      ));
     for (let n = range.start; n <= range.end; n++) {
       const i = n - range.start;
       const weekday = weekdayOfDay(n);
       const iso = fromDay(n);
-      // 연도별 보기에서는 주말 띠가 촘촘한 줄무늬가 되어 그리지 않습니다
-      if (view !== 'year' && (weekday === 0 || weekday === 6)) {
-        bands.push(<div key={`b${n}`} className="weekend-band" style={{ left: `${(i / total) * 100}%`, width: `${100 / total}%` }} />);
-      }
       if (i > 0 && iso.endsWith('-01')) {
         bounds.push(
           <div key={`m${n}`} className="month-boundary" style={{ left: `${(i / total) * 100}%` }}>

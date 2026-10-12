@@ -10,7 +10,8 @@
     "build": "npm run typecheck && vite build",
     "build:static": "npm run typecheck && vite build --mode static --outDir dist-static --emptyOutDir && node scripts/build-static.mjs dist-static",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "holidays": "node scripts/update-holidays.mjs"
   },
   "dependencies": {
     "docx": "^9.8.1",

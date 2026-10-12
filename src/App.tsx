@@ -289,11 +289,12 @@ export default function App() {
   };
 
   // 대표 업무는 목록 맨 위로 올리는 표시라서, 내보내기 체크는 건드리지 않습니다
-  const toggleFeatured = async () => {
-    if (!detailRecord) return;
-    const next = !detailRecord.featured;
+  const toggleFeatured = async (id: string) => {
+    const record = records.find((r) => r.id === id);
+    if (!record) return;
+    const next = !record.featured;
     try {
-      await store.setFeatured(detailRecord.id, next);
+      await store.setFeatured(id, next);
       show(next ? '대표 업무로 표시했어요. 목록 맨 위 대표 업무 묶음에 보여요.' : '대표 업무 표시를 뺐어요.');
     } catch (err) {
       show(err instanceof Error ? err.message : '저장하지 못했어요.');
@@ -433,6 +434,7 @@ export default function App() {
           onDeleteChecked={deleteChecked}
           onExportChecked={() => setExportOpen(true)}
           onOpen={(id) => openDetail(id, 'list')}
+          onToggleFeatured={toggleFeatured}
           onAdd={() => setForm({ mode: 'add' })}
         />
         <footer className="footer">
@@ -469,7 +471,7 @@ export default function App() {
         onEdit={() => detailRecord && setForm({ mode: 'edit', recordId: detailRecord.id })}
         onDelete={deleteSelected}
         onToggleCheck={(v) => detailRecord && toggleCheck(detailRecord.id, v)}
-        onToggleFeatured={toggleFeatured}
+        onToggleFeatured={() => detailRecord && toggleFeatured(detailRecord.id)}
         onAddImages={addImagesToSelected}
         onRemoveImage={removeImageFromSelected}
         onExpand={(url, title) => setViewer({ url, title })}

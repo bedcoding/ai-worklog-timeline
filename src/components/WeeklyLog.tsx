@@ -32,6 +32,8 @@ interface WeeklyLogProps {
   onDeleteChecked: () => void;
   onExportChecked: () => void;
   onOpen: (id: string) => void;
+  /** 대표 업무 표시를 켜고 끕니다(읽기 전용 화면에서는 쓰지 않습니다) */
+  onToggleFeatured: (id: string) => void;
   onAdd: () => void;
 }
 
@@ -238,6 +240,7 @@ export function WeeklyLog(props: WeeklyLogProps) {
                         thumb={r.images[0] ? images.get(r.images[0].id)?.url : undefined}
                         onCheck={(v) => props.onToggleCheck(r.id, v)}
                         onOpen={() => props.onOpen(r.id)}
+                        onToggleFeatured={() => props.onToggleFeatured(r.id)}
                       />
                     ))}
                   </div>
@@ -277,9 +280,10 @@ interface WorkRowProps {
   thumb?: string;
   onCheck: (value: boolean) => void;
   onOpen: () => void;
+  onToggleFeatured: () => void;
 }
 
-function WorkRow({ record: r, active, checked, thumb, onCheck, onOpen }: WorkRowProps) {
+function WorkRow({ record: r, active, checked, thumb, onCheck, onOpen, onToggleFeatured }: WorkRowProps) {
   const type = WORK_TYPES[r.type];
   const summary = splitDescription(r.description).body;
   return (
@@ -311,7 +315,22 @@ function WorkRow({ record: r, active, checked, thumb, onCheck, onOpen }: WorkRow
         {summary && <span className="row-description">{summary}</span>}
       </button>
       <div className="row-tail">
-        {r.featured && <IconStar className="row-star" />}
+        {/* 로컬 앱에서는 별을 눌러 바로 대표 업무를 켜고 끕니다 */}
+        {/* 읽기 전용 화면에서는 대표 업무에만 별을 보여 줍니다 */}
+        {READ_ONLY ? (
+          r.featured && <IconStar className="row-star" />
+        ) : (
+          <button
+            type="button"
+            className={`row-star-toggle${r.featured ? ' is-on' : ''}`}
+            aria-pressed={!!r.featured}
+            aria-label={`${r.title} ${r.featured ? '대표 업무 표시 빼기' : '대표 업무로 표시'}`}
+            title={r.featured ? '대표 업무 표시 빼기' : '대표 업무로 표시'}
+            onClick={onToggleFeatured}
+          >
+            <IconStar />
+          </button>
+        )}
         <button type="button" className="row-open" aria-label={`${r.title} 상세 보기`} onClick={onOpen}>
           ↗
         </button>

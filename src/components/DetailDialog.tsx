@@ -98,6 +98,17 @@ export function DetailDialog(props: DetailDialogProps) {
             <div className="modal-actions">
               {!READ_ONLY && (
                 <>
+                  {/* 대표 업무는 목록 맨 위로 올리는 표시일 뿐이라, 내보내기 체크와 따로 움직입니다 */}
+                  <button
+                    type="button"
+                    className={`icon-button star-toggle${record?.featured ? ' is-on' : ''}`}
+                    aria-pressed={!!record?.featured}
+                    aria-label={record?.featured ? '대표 업무 표시 빼기' : '대표 업무로 표시'}
+                    title={record?.featured ? '대표 업무 표시 빼기' : '대표 업무로 표시'}
+                    onClick={props.onToggleFeatured}
+                  >
+                    <IconStar />
+                  </button>
                   <button type="button" className="icon-button" aria-label="기록 수정" title="기록 수정" onClick={props.onEdit}>
                     <IconEdit />
                   </button>
@@ -186,8 +197,7 @@ export function DetailDialog(props: DetailDialogProps) {
                   {WORK_TYPES[record.type].label}
                 </span>
                 {record.limitHit && <span className="tag limit-tag">사용 한도 도달</span>}
-                {/* 읽기 전용 화면은 표시 단추가 없어서 대표 업무인 것만 여기에 알립니다 */}
-                {READ_ONLY && record.featured && (
+                {record.featured && (
                   <span className="tag featured-tag">
                     <IconStar />
                     대표 업무
@@ -211,18 +221,6 @@ export function DetailDialog(props: DetailDialogProps) {
                   {view?.effect || (READ_ONLY ? '적어 둔 효과가 없어요.' : '아직 적지 않았어요. 수정 버튼을 눌러 이전 방식과 비교한 효과를 적어 두세요.')}
                 </dd>
               </dl>
-              {/* 대표 업무는 목록 맨 위로 올리는 표시일 뿐이라, 바로 아래 내보내기 체크와 따로 움직입니다 */}
-              {!READ_ONLY && (
-                <button
-                  type="button"
-                  className={`star-button${record.featured ? ' selected' : ''}`}
-                  aria-pressed={!!record.featured}
-                  onClick={props.onToggleFeatured}
-                >
-                  <IconStar />
-                  {record.featured ? '대표 업무' : '대표 업무로 표시'}
-                </button>
-              )}
               <label className="detail-check">
                 <input type="checkbox" checked={checked} onChange={(e) => props.onToggleCheck(e.target.checked)} />
                 선택 내보내기에 포함

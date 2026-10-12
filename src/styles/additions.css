@@ -445,13 +445,17 @@ dialog:focus {
   background: #f7ece4;
   color: #9a6a4b;
 }
-/* 대표 업무: 읽기 전용 상세 화면의 태그, 목록 맨 위 묶음 이름, 상세 화면의 표시 단추 */
+/* 대표 업무: 상세 화면 날짜 옆 태그, 목록 맨 위 묶음 이름, 상세 화면 위쪽 별 단추, 목록 행의 별 단추 */
 .tag.featured-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   background: #f2f8e8;
   color: #526c28;
+}
+/* 다른 태그처럼 앞에 점을 찍지 않고 별만 보여 줍니다 */
+.tag.featured-tag:before {
+  display: none;
 }
 .featured-tag svg,
 .week-range .week-star {
@@ -465,8 +469,41 @@ dialog:focus {
   margin-right: 5px;
   vertical-align: -1px;
 }
-.detail .star-button + .detail-check {
-  margin-top: 8px;
+.star-toggle.is-on {
+  border-color: #dae8bf;
+  background: #f2f8e8;
+}
+.star-toggle.is-on svg,
+.row-star-toggle.is-on svg {
+  fill: #c5df8e;
+  stroke: #668937;
+}
+.row-star-toggle {
+  border: 0;
+  background: transparent;
+  padding: 6px;
+  display: inline-grid;
+  place-items: center;
+  color: #9aa58e;
+  cursor: pointer;
+}
+.row-star-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+/* 꺼진 별은 행에 마우스를 올리거나 단추에 포커스가 갈 때만 보여서 목록을 어지럽히지 않습니다 */
+.row-star-toggle:not(.is-on) {
+  opacity: 0;
+}
+.work-row:hover .row-star-toggle,
+.row-star-toggle:focus-visible {
+  opacity: 1;
+}
+/* 마우스가 없는 화면에서는 꺼진 별도 흐리게 늘 보여 줍니다 */
+@media (hover: none) {
+  .row-star-toggle:not(.is-on) {
+    opacity: 0.45;
+  }
 }
 .attach-actions {
   display: flex;

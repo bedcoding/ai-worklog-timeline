@@ -141,6 +141,24 @@ describe('Word 내보내기', () => {
     expect(alone.body).toContain('한 일');
   });
 
+  it('이미지를 옆 칸에 넣으면 기록 줄과 날짜 표 줄은 쪽 사이에서 나뉠 수 있고, 날짜와 제목은 다음 문단과 같은 쪽에 붙인다', async () => {
+    const description = '메뉴를 옮김.\n\n8. 7. 홈페이지 메뉴 전환\n8. 11.~8. 13. 배너 메뉴 전환';
+    const { body } = await build({ includeForm: false }, [
+      rec('a', '2026-07-14', '서버 전환', { description, images: [{ id: 'img1', label: '화면 캡처', name: 'shot.png' }] }),
+    ]);
+    // 칸 이름 줄, 기록 줄, 날짜 표 줄 순서이고, 그 뒤는 날짜 표 안의 줄입니다
+    const rows = body.split('<w:tr>').slice(1);
+    const props = rows.map((row) => row.split('<w:tc>')[0]);
+    expect(props[0]).toContain('<w:tblHeader/>');
+    expect(props[0]).toContain('<w:cantSplit/>');
+    expect(rows[1]).toContain('<w:drawing>');
+    expect(props[1]).not.toContain('<w:cantSplit/>');
+    expect(props[2]).not.toContain('<w:cantSplit/>');
+    // 날짜 표 안의 줄은 한 줄씩 나뉘지 않게 둡니다
+    for (const p of props.slice(3)) expect(p).toContain('<w:cantSplit/>');
+    expect(rows[1].match(/<w:keepNext\/>/g)).toHaveLength(2);
+  });
+
   it('이미지를 내용 아래에 넣으면 칸 하나짜리 표에 칸 이름 줄 없이 담는다', async () => {
     const { body } = await build({ includeForm: false, imagesBelow: true });
     expect(body).not.toContain('<w:tblHeader');

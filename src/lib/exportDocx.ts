@@ -302,18 +302,21 @@ export async function buildDocxExport(
     // 사례 표는 기록 칸 안쪽 폭에 맞춥니다
     const inner = (below || !shots.length ? SHOT_WIDTH + NOTE_WIDTH : NOTE_WIDTH) - CELL_MARGINS.left - CELL_MARGINS.right;
     const day = `${shortDate(r.date)} ${weekdayKo(r.date)}`;
-    // 이미지를 내용 아래에 넣을 때는 날짜와 제목을 회색 제목 줄로 따로 뺍니다
+    // 이미지를 내용 아래에 넣을 때는 날짜와 제목을 회색 제목 줄로 따로 뺍니다.
+    // 옆 칸에 넣을 때는 기록 줄이 쪽 사이에서 나뉠 수 있어서, 날짜와 제목은 다음 문단과 같은 쪽에 붙여 쪽 끝에 홀로 남지 않게 합니다.
     const notes: (Paragraph | Table)[] = below
       ? []
       : [
-          ...(options.hideDates ? [] : [new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: day, color: MUTED, size: SMALL_TEXT })] })]),
-          new Paragraph({ spacing: { after: 100, line: 288 }, children: [new TextRun({ text: r.title, bold: true, size: 20 })] }),
+          ...(options.hideDates
+            ? []
+            : [new Paragraph({ keepNext: true, spacing: { after: 40 }, children: [new TextRun({ text: day, color: MUTED, size: SMALL_TEXT })] })]),
+          new Paragraph({ keepNext: true, spacing: { after: 100, line: 288 }, children: [new TextRun({ text: r.title, bold: true, size: 20 })] }),
         ];
     if (r.limitHit) notes.push(new Paragraph({ spacing: { after: 100 }, children: [new TextRun({ text: '사용 한도 도달', color: MUTED, size: SMALL_TEXT })] }));
     // 내용에 "AI 초안:"과 "담당자 수정:" 줄이 짝으로 있으면 그 부분은 사례 표로, 날짜로 시작하는 줄이 이어지면 날짜 표로 바꿉니다
     const parts = splitContent(r.description.trim());
     // 이미지를 옆 칸에 넣을 때 내용 맨 끝의 날짜 표는 기록 칸 아래에 표 폭 그대로 따로 넣습니다.
-    // 좁은 오른쪽 칸에 넣으면 기록 한 칸이 A4 한 쪽을 넘기 쉽고, Word는 쪽 사이에서 나누지 않는 칸의 넘친 부분을 잘라 버립니다.
+    // 좁은 오른쪽 칸에 넣으면 한 일이 여러 줄로 접혀 표가 세로로 길게 늘어집니다.
     const last = parts[parts.length - 1];
     const trailing = !below && shots.length && last?.kind === 'dates' ? last : undefined;
     for (const part of trailing ? parts.slice(0, -1) : parts) {
@@ -344,11 +347,14 @@ export async function buildDocxExport(
       const cells = shots.length
         ? [cell(shots, SHOT_WIDTH, false, undefined, open), cell(notes, NOTE_WIDTH, false, undefined, open)]
         : [cell(notes, SHOT_WIDTH + NOTE_WIDTH, false, 2)];
-      rows.push(new TableRow({ cantSplit: true, children: cells }));
+      // 기록 줄과 날짜 표 줄은 쪽 사이에서 나뉠 수 있게 둡니다.
+      // 나뉘지 않게 하면 한 쪽을 넘는 기록은 넘친 부분이 잘리고, 그보다 작아도 남은 자리에 안 들어가면 통째로 넘어가며 큰 빈 곳이 생깁니다.
+      // 이미지는 한 장씩 통째로 다음 쪽으로 넘어갑니다.
+      rows.push(new TableRow({ children: cells }));
       if (trailing) {
         const wide = SHOT_WIDTH + NOTE_WIDTH - CELL_MARGINS.left - CELL_MARGINS.right;
         const table = [dateTable(trailing.rows, wide), new Paragraph({ spacing: { after: 0, line: 200 } })];
-        rows.push(new TableRow({ cantSplit: true, children: [cell(table, SHOT_WIDTH + NOTE_WIDTH, false, 2, { top: NO_BORDER })] }));
+        rows.push(new TableRow({ children: [cell(table, SHOT_WIDTH + NOTE_WIDTH, false, 2, { top: NO_BORDER })] }));
       }
     }
   }

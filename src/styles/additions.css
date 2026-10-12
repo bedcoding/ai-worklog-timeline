@@ -68,6 +68,25 @@
   white-space: nowrap;
   color: #b0776b;
 }
+/* ---------- 타임라인: 기록이 걸친 기간 ---------- */
+/* 기록들이 걸친 기간을 트랙에 이어 칠해서, 점 사이가 일하지 않은 날처럼 비어 보이지 않게 합니다 */
+.track {
+  overflow: hidden;
+}
+.track-work {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 7px;
+  background: #bcd298;
+}
+/* 마우스를 올린 기록은 그 기록이 걸친 기간만 점 색으로 칠합니다(색은 Timeline.tsx에서 줍니다) */
+.track-active {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 7px;
+}
 /* 기록이 없는 기간: 눈금 위에 흰 상자를 띄웁니다(월 구분선이 글자를 가로지르지 않게) */
 .timeline-frame {
   position: relative;

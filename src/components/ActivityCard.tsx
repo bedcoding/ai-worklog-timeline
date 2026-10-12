@@ -102,6 +102,7 @@ export function ActivityCard(props: ActivityCardProps) {
         </div>
         <Timeline
           records={records}
+          allRecords={allRecords}
           range={range}
           view={period.view}
           today={today}

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { fromDay, shortDate, toDay, weekdayOfDay, type DayRange } from '../lib/dates';
+import { workSpan } from '../lib/cases';
+import { fromDay, mergeRanges, shortDate, toDay, weekdayOfDay, type DayRange } from '../lib/dates';
 import { restSpans } from '../lib/holidays';
 import type { ImageEntry, ViewKind, WorkRecord } from '../lib/types';
 import { clamp } from '../lib/util';
@@ -16,6 +17,8 @@ const HIT_TOUCH = 26;
 interface TimelineProps {
   /** 지금 기간에 보이는 기록(날짜순) */
   records: WorkRecord[];
+  /** 모든 기록. 기록 날짜가 이 기간 밖이어도 걸친 기간을 트랙에 칠할 때 씁니다. */
+  allRecords: WorkRecord[];
   range: DayRange;
   view: ViewKind;
   today: string;
@@ -31,12 +34,15 @@ interface TimelineProps {
 
 /*
  * 설계 메모
- * - 모양은 디자인 시안 그대로입니다. 다른 점은 두 가지입니다.
+ * - 모양은 디자인 시안 그대로입니다. 다른 점은 세 가지입니다.
  *   1) 같은 날 기록만 아래로 쌓습니다. 시안은 가까운 날짜끼리도 아래로 내려서, 매일 기록하면 점 대부분이 계단처럼 매달렸습니다.
  *   2) 점 버튼은 키보드와 화면 낭독기 전용이고, 마우스와 터치는 타임라인 전체가 받아 가장 가까운 점 하나를 고릅니다.
  *      점이 촘촘해도 히트 영역이 겹쳐 엉뚱한 점이 잡히지 않습니다.
+ *   3) 기록마다 걸친 기간(날짜별로 한 일 줄)을 트랙에 한 줄로 이어 칠합니다.
+ *      점은 기록 날짜에만 찍혀서, 며칠씩 걸린 작업 사이가 일하지 않은 날처럼 비어 보였습니다.
+ *      기간은 막대를 따로 쌓지 않고 겹치는 대로 합쳐 칠하고, 점에 마우스를 올리면 그 기록의 기간만 점 색으로 바꿉니다.
  */
-export function Timeline({ records, range, view, today, selectedId, images, reservedLanes, onSelect, onOpen }: TimelineProps) {
+export function Timeline({ records, allRecords, range, view, today, selectedId, images, reservedLanes, onSelect, onOpen }: TimelineProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pointRefs = useRef(new Map<string, HTMLButtonElement>());
   const pendingFocus = useRef<string | null>(null);
@@ -55,9 +61,22 @@ export function Timeline({ records, range, view, today, selectedId, images, rese
       const day = toDay(record.date);
       const lane = perDay.get(day) ?? 0;
       perDay.set(day, lane + 1);
-      return { record, day, lane };
+      // 기록이 걸친 기간. 지금 보는 기간 밖으로 나간 부분은 자릅니다.
+      const work = workSpan(record);
+      const span = { start: Math.max(work.start, range.start), end: Math.min(work.end, range.end) };
+      return { record, day, lane, span };
     });
-  }, [records]);
+  }, [records, range.start, range.end]);
+  // 기록들이 걸친 기간을 겹치거나 맞붙은 것끼리 이어서 트랙에 칠합니다.
+  // 지난달에 시작해 이번 달까지 이어진 작업처럼 기록 날짜가 이 기간 밖이어도, 걸친 만큼은 칠해서 빈 날로 보이지 않게 합니다.
+  const workBands = useMemo(() => {
+    const spans = allRecords
+      .map((record) => workSpan(record))
+      .filter((span) => span.end >= range.start && span.start <= range.end)
+      .map((span) => ({ start: Math.max(span.start, range.start), end: Math.min(span.end, range.end) }));
+    return mergeRanges(spans);
+  }, [allRecords, range.start, range.end]);
+  const spanStyle = (span: DayRange) => ({ left: `${((span.start - range.start) / count) * 100}%`, width: `${((span.end - span.start + 1) / count) * 100}%` });
   const maxLane = layout.reduce((m, p) => Math.max(m, p.lane), 0);
   const extra = Math.max(reservedLanes, maxLane) * LANE_GAP;
 
@@ -176,6 +195,7 @@ export function Timeline({ records, range, view, today, selectedId, images, rese
 
   const tipId = hoverId ?? focusTipId;
   const tipRecord = tipId ? records.find((r) => r.id === tipId) : undefined;
+  const tipSpan = tipId ? layout.find((p) => p.record.id === tipId)?.span : undefined;
   const tipAnchor = tipRecord ? pointRefs.current.get(tipRecord.id) : undefined;
   const tipImage = tipRecord?.images[0] ? images.get(tipRecord.images[0].id)?.url : undefined;
 
@@ -209,6 +229,10 @@ export function Timeline({ records, range, view, today, selectedId, images, rese
           {decorations.bounds}
           <div className="track">
             <div className="track-progress" style={{ width: `${progress}%` }} />
+            {workBands.map((band) => (
+              <div key={band.start} className="track-work" style={spanStyle(band)} />
+            ))}
+            {tipRecord && tipSpan && <div className="track-active" style={{ ...spanStyle(tipSpan), background: WORK_TYPES[tipRecord.type].color }} />}
           </div>
           <div className="ticks" style={{ transform: `translateY(${extra}px)` }}>
             {decorations.ticks}

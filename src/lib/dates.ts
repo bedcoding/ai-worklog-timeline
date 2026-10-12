@@ -154,6 +154,17 @@ export function groupLabel(start: number, unit: ListUnit): string {
   return `${shortDate(fromDay(start))} ~ ${shortDate(fromDay(start + 6))}`;
 }
 
+/** 겹치거나 맞붙은 기간을 하나로 이어서 시작 순으로 돌려줍니다. 1~5일과 3~7일은 1~7일 하나가 됩니다. */
+export function mergeRanges(ranges: readonly DayRange[]): DayRange[] {
+  const merged: DayRange[] = [];
+  for (const r of [...ranges].sort((a, b) => a.start - b.start)) {
+    const last = merged[merged.length - 1];
+    if (last && r.start <= last.end + 1) last.end = Math.max(last.end, r.end);
+    else merged.push({ start: r.start, end: r.end });
+  }
+  return merged;
+}
+
 /** 2026.07.01 ~ 2026.09.30 */
 export function rangeCaption(range: DayRange): string {
   return `${fromDay(range.start).replaceAll('-', '.')} ~ ${fromDay(range.end).replaceAll('-', '.')}`;

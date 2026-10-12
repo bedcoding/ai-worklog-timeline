@@ -11,7 +11,9 @@ import {
   splitTrailingDates,
   withoutCases,
   withoutDates,
+  workSpan,
 } from './cases';
+import { fromDay } from './dates';
 import type { WorkRecord } from './types';
 
 describe('사례 나누기', () => {
@@ -106,6 +108,35 @@ describe('날짜 표', () => {
     expect(hasDates(withoutDates(text))).toBe(false);
     // 한 줄뿐인 날짜 줄은 표가 아니라 글이라서 남긴다
     expect(withoutDates('개요.\n9. 16. 배포함.')).toBe('개요.\n9. 16. 배포함.');
+  });
+});
+
+describe('기록이 걸친 기간', () => {
+  const span = (date: string, description: string) => {
+    const r = workSpan({ date, description });
+    return [fromDay(r.start), fromDay(r.end)];
+  };
+
+  it('날짜 줄의 첫날부터 마지막 날까지이고, 기간으로 쓴 줄은 끝날까지 넣는다', () => {
+    expect(span('2026-08-07', '화면을 고침.\n\n8. 7. 첫 화면\n8/11~8/13 목록 정리\n9. 2. 배포')).toEqual(['2026-08-07', '2026-09-02']);
+  });
+
+  it('기록 날짜가 날짜 줄 뒤에 있으면 기록 날짜까지 늘린다', () => {
+    expect(span('2026-09-30', '자잘한 요청을 고침.\n\n9. 3. 버튼 수정\n9. 15. 문구 수정')).toEqual(['2026-09-03', '2026-09-30']);
+  });
+
+  it('한 줄뿐인 날짜 줄도 그날 한 일로 보고, 날짜 줄이 없으면 기록 날짜 하루다', () => {
+    expect(span('2026-09-22', '화면을 고침.\n9. 29. 배포')).toEqual(['2026-09-22', '2026-09-29']);
+    expect(span('2026-09-22', '화면을 고침.')).toEqual(['2026-09-22', '2026-09-22']);
+  });
+
+  it('연도 없이 쓴 날짜는 기록 날짜에서 가장 가까운 해로 본다', () => {
+    expect(span('2025-12-29', '12. 22. 시작\n1. 5. 마무리')).toEqual(['2025-12-22', '2026-01-05']);
+    expect(span('2026-01-05', '12. 29. 시작\n1. 5. 마무리')).toEqual(['2025-12-29', '2026-01-05']);
+  });
+
+  it('없는 날짜는 건너뛴다', () => {
+    expect(span('2026-02-10', '2. 30. 잘못 쓴 날\n2. 12. 마무리')).toEqual(['2026-02-10', '2026-02-12']);
   });
 });
 

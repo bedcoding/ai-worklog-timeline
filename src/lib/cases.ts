@@ -1,3 +1,4 @@
+import { fromDay, isValidISO, pad2, toDay, yearOf, type DayRange } from './dates';
 import type { WorkRecord } from './types';
 
 /** 기록 내용 안의 "AI 초안 → 담당자 수정" 사례 하나 */
@@ -111,6 +112,49 @@ export function splitDates(text: string): ContentPart[] {
   }
   flush();
   return parts;
+}
+
+/** 날짜 줄 앞머리의 날짜나 기간에서 월과 일을 하나씩 꺼냅니다(8. 11.~8. 13.이면 8월 11일과 8월 13일) */
+const MONTH_DAY = /(\d{1,2})(?:\.\s?(\d{1,2})\.|\/(\d{1,2}))/g;
+
+/**
+ * 연도 없이 쓴 월과 일을 기준 날에서 가장 가까운 해의 날로 바꿉니다.
+ * 12월 기록에 쓴 1. 5.는 다음 해 1월 5일입니다.
+ * 없는 날짜(2. 30.)면 null입니다.
+ */
+function nearestDay(month: number, date: number, base: number): number | null {
+  const year = yearOf(fromDay(base));
+  let best: number | null = null;
+  for (const y of [year - 1, year, year + 1]) {
+    const iso = `${y}-${pad2(month)}-${pad2(date)}`;
+    if (!isValidISO(iso)) continue;
+    const day = toDay(iso);
+    if (best === null || Math.abs(day - base) < Math.abs(best - base)) best = day;
+  }
+  return best;
+}
+
+/**
+ * 기록이 걸친 기간입니다. 타임라인 트랙에 칠합니다.
+ * 내용에서 날짜나 기간으로 시작하는 줄(날짜별로 한 일)의 첫날부터 마지막 날까지이고, 기록 날짜가 그 밖이면 기록 날짜까지 늘립니다.
+ * 날짜 표가 되지 않는 한 줄짜리 날짜 줄도 그날 한 일로 봅니다.
+ * 날짜 줄이 없으면 기록 날짜 하루입니다.
+ */
+export function workSpan(record: Pick<WorkRecord, 'date' | 'description'>): DayRange {
+  const base = toDay(record.date);
+  let start = base;
+  let end = base;
+  for (const line of record.description.split(/\r?\n/)) {
+    const head = DATE_LINE.exec(line.trim())?.[1];
+    if (!head) continue;
+    for (const m of head.matchAll(MONTH_DAY)) {
+      const day = nearestDay(Number(m[1]), Number(m[2] ?? m[3]), base);
+      if (day === null) continue;
+      start = Math.min(start, day);
+      end = Math.max(end, day);
+    }
+  }
+  return { start, end };
 }
 
 /** 기록 내용에 날짜 표가 하나라도 있는지 알려 줍니다 */

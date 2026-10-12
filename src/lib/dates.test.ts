@@ -5,6 +5,7 @@ import {
   groupStartOf,
   isValidISO,
   listUnitFor,
+  mergeRanges,
   mondayOf,
   monthOptions,
   periodFor,
@@ -86,6 +87,22 @@ describe('dates', () => {
     const list = monthOptions('2026-10-04', ['2025-03-02']);
     expect(list[0]).toEqual({ year: 2025, month: 3 });
     expect(list[list.length - 1]).toEqual({ year: 2026, month: 10 });
+  });
+
+  it('겹치거나 맞붙은 기간을 하나로 잇고, 떨어진 기간은 따로 둔다', () => {
+    // 1~5일과 3~7일은 1~7일 하나, 8~9일은 맞붙어서 이어지고, 12일은 떨어져 있습니다
+    const ranges = [
+      { start: 3, end: 7 },
+      { start: 1, end: 5 },
+      { start: 8, end: 9 },
+      { start: 12, end: 12 },
+    ];
+    expect(mergeRanges(ranges)).toEqual([
+      { start: 1, end: 9 },
+      { start: 12, end: 12 },
+    ]);
+    // 받은 목록은 건드리지 않습니다
+    expect(ranges[0]).toEqual({ start: 3, end: 7 });
   });
 
   it('시각은 PC 시간대 기준 날짜와 시분으로 보여 주고, 읽을 수 없으면 비운다', () => {

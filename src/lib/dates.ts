@@ -17,6 +17,16 @@ export function todayISO(now: Date = new Date()): string {
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
 }
 
+/**
+ * 시각 문자열(ISO)을 사용자 PC 시간대 기준 '2026-10-12 13:05'로 바꿉니다.
+ * 읽을 수 없으면 빈 문자열입니다.
+ */
+export function stampLabel(iso: string): string {
+  const time = new Date(iso);
+  if (Number.isNaN(time.getTime())) return '';
+  return `${todayISO(time)} ${pad2(time.getHours())}:${pad2(time.getMinutes())}`;
+}
+
 export function toDay(iso: string): number {
   const [y, m, d] = iso.split('-').map(Number);
   return Math.round(Date.UTC(y, m - 1, d) / DAY_MS);

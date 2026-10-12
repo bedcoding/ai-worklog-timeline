@@ -35,6 +35,8 @@ export interface DataSnapshot {
   settings: Settings | null;
   records: WorkRecord[];
   problems: Problem[];
+  /** 읽기 전용 빌드를 만든 시각(ISO)이고, 저장 서버의 응답에는 없어서 비어 있습니다 */
+  builtAt: string;
 }
 
 async function call<T>(method: string, url: string, body?: unknown): Promise<T> {
@@ -77,6 +79,7 @@ function parseSnapshot(raw: unknown): DataSnapshot {
     problems: Array.isArray(d.problems)
       ? d.problems.filter((p): p is Problem => !!p && typeof p.folder === 'string' && typeof p.message === 'string')
       : [],
+    builtAt: typeof d.builtAt === 'string' ? d.builtAt : '',
   };
 }
 

@@ -22,6 +22,8 @@ async function envDataDir() {
 }
 
 const warnings = [];
+// 화면 아래쪽에 언제 만든 자료인지 보여 주려고 빌드한 시각을 함께 씁니다
+const builtAt = new Date().toISOString();
 
 /**
  * 데이터 폴더 하나를 outDir 에 넣고, 넣은 기록과 이미지 수를 글로 돌려줍니다.
@@ -59,8 +61,8 @@ async function writeBundle(dataDir, outDir) {
   }
 
   const settings = JSON.parse(await readFile(path.join(dataDir, 'settings.json'), 'utf8').catch(() => 'null'));
-  // 저장 서버의 /api/data 응답과 같은 모양으로 씁니다
-  await writeFile(path.join(outDir, 'data.json'), JSON.stringify({ dataDir: '', initialized: true, settings, records, problems: [] }));
+  // 저장 서버의 /api/data 응답과 같은 모양에 빌드한 시각만 더해서 씁니다
+  await writeFile(path.join(outDir, 'data.json'), JSON.stringify({ dataDir: '', initialized: true, settings, records, problems: [], builtAt }));
   return `기록 ${records.length}개, 이미지 ${imageCount}장(${(imageBytes / 1024 / 1024).toFixed(1)}MB)`;
 }
 

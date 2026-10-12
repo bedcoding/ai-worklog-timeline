@@ -12,6 +12,7 @@ import {
   periodRange,
   quarterRange,
   shiftPeriod,
+  stampLabel,
   toDay,
   yearOptions,
 } from './dates';
@@ -85,5 +86,12 @@ describe('dates', () => {
     const list = monthOptions('2026-10-04', ['2025-03-02']);
     expect(list[0]).toEqual({ year: 2025, month: 3 });
     expect(list[list.length - 1]).toEqual({ year: 2026, month: 10 });
+  });
+
+  it('시각은 PC 시간대 기준 날짜와 시분으로 보여 주고, 읽을 수 없으면 비운다', () => {
+    expect(stampLabel(new Date(2026, 9, 12, 13, 5, 59).toISOString())).toBe('2026-10-12 13:05');
+    expect(stampLabel(new Date(2026, 0, 2, 0, 0).toISOString())).toBe('2026-01-02 00:00');
+    expect(stampLabel('')).toBe('');
+    expect(stampLabel('어제')).toBe('');
   });
 });

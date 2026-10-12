@@ -29,6 +29,8 @@ interface State {
   legacyPending: number;
   /** 처음 열 때 한 번 알릴 말 */
   notice: string | null;
+  /** 읽기 전용 빌드를 만든 시각(ISO)이고, 로컬 앱에서는 비어 있습니다 */
+  builtAt: string;
 }
 
 export interface ActionResult {
@@ -160,6 +162,7 @@ export function useWorklog() {
     problems: [],
     legacyPending: 0,
     notice: null,
+    builtAt: '',
   });
   // 비동기 작업이 항상 최신 상태를 읽도록 상태 변경은 commit 으로만 합니다
   const ref = useRef(state);
@@ -184,6 +187,7 @@ export function useWorklog() {
           problems: data.problems,
           legacyPending,
           notice,
+          builtAt: data.builtAt,
         }));
       })
       .catch((e: unknown) => {
@@ -223,6 +227,7 @@ export function useWorklog() {
       settings: data.settings ?? s.settings,
       dataDir: data.dataDir,
       problems: data.problems,
+      builtAt: data.builtAt,
     }));
   }, [commit]);
 

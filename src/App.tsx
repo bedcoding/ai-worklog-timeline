@@ -20,6 +20,7 @@ import {
   quarterOfMonth,
   rangeCaption,
   shiftPeriod,
+  stampLabel,
   toDay,
   todayISO,
   yearOf,
@@ -104,6 +105,7 @@ export default function App() {
   const detailRecord = records.find((r) => r.id === selectedId);
   const label = periodLabel(period, range);
   const caption = rangeCaption(range);
+  const builtLabel = stampLabel(store.builtAt);
   const periodKey = `${period.view}-${range.start}-${range.end}`;
   const checkedRecords = useMemo(() => records.filter((r) => checked.has(r.id)), [records, checked]);
   const toolUsage = useMemo(() => {
@@ -435,7 +437,8 @@ export default function App() {
               </>
             )}
           </span>
-          <span className="prototype-note">오늘 {today}</span>
+          {/* 읽기 전용 화면은 언제 만든 자료인지 알 수 있게 빌드한 시각을 보여 주고, 로컬 앱은 오늘 날짜를 보여 줍니다 */}
+          <span className="prototype-note">{builtLabel ? `갱신 ${builtLabel}` : `오늘 ${today}`}</span>
         </footer>
       </main>
 

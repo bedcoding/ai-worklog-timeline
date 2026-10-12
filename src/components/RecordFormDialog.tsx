@@ -166,7 +166,7 @@ function RecordForm({ mode, record, initialFiles, defaultDate, settings, images,
       <p className="dialog-note">한 줄 메모와 화면 한 장이면 충분해요. 캡처한 화면은 이 창에서 Ctrl+V로 바로 붙여 넣을 수 있어요.</p>
       <div className="form-grid">
         <label className="field">
-          날짜
+          시작일
           <input type="date" value={date} required onChange={(e) => setDate(e.target.value)} />
         </label>
         <label className="field">

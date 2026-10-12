@@ -118,7 +118,7 @@ export function WeeklyLog(props: WeeklyLogProps) {
       <div className="log-heading">
         <div>
           <h2 id="weekly-heading">{unit === 'month' ? '월별 기록' : '주간 기록'}</h2>
-          <p>최근 기록부터 둘러보세요. 결과물을 누르면 상세 화면이 열립니다.</p>
+          <p>결과물을 누르면 상세 화면이 열립니다.</p>
         </div>
         <div className="log-tools">
           <input

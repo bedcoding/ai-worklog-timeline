@@ -844,9 +844,6 @@ dialog::backdrop {
   .timeline-heading {
     display: block;
   }
-  .legend {
-    margin-top: 12px;
-  }
   .timeline-card {
     padding: 13px 10px;
   }
@@ -856,16 +853,6 @@ dialog::backdrop {
   .timeline {
     min-width: 760px;
     margin: 0 18px;
-  }
-  .timeline-foot {
-    padding: 0 4px;
-  }
-  .key-hint {
-    display: none !important;
-  }
-  .swipe-hint {
-    display: inline;
-    font-size: 9px;
   }
   .selection-bar {
     padding: 12px;
@@ -937,32 +924,11 @@ dialog::backdrop {
   color: var(--muted);
   font-size: 11px;
 }
-.legend {
-  display: flex;
-  gap: 15px;
-  margin-top: 5px;
+.timeline-range {
+  margin: 2px 0 0;
   font-size: 10px;
   color: var(--muted);
-}
-.legend span {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-}
-.legend i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--dot);
-}
-.legend svg {
-  display: block;
-  width: 12px;
-  height: 12px;
-  fill: #c5df8e;
-  stroke: #668937;
-  stroke-width: 1.6;
-  stroke-linejoin: round;
+  white-space: nowrap;
 }
 .timeline-card {
   border: 1px solid var(--line);
@@ -1182,31 +1148,6 @@ dialog::backdrop {
   pointer-events: none;
   box-shadow: 0 3px 8px #2531200a;
 }
-.timeline-foot {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 1px;
-  font-size: 10px;
-  color: var(--muted);
-}
-.timeline-foot .key-hint {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-}
-kbd {
-  font-family: inherit;
-  font-size: 9px;
-  display: inline-grid;
-  place-items: center;
-  width: 17px;
-  height: 17px;
-  border: 1px solid var(--line);
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  color: #7c846f;
-}
 .date-picker {
   position: fixed;
   inset: auto;
@@ -1329,9 +1270,6 @@ kbd {
   .timeline-heading {
     display: block;
   }
-  .legend {
-    margin-top: 12px;
-  }
   .timeline-card {
     padding: 13px 10px;
   }
@@ -1342,15 +1280,13 @@ kbd {
     min-width: 760px;
     margin: 0 18px;
   }
-  .timeline-foot {
-    padding: 0 4px;
-  }
-  .key-hint {
-    display: none !important;
-  }
   .swipe-hint {
-    display: inline;
+    display: block;
+    margin: 1px 0 0;
+    padding: 0 4px;
     font-size: 9px;
+    color: var(--muted);
+    text-align: center;
   }
 }
 
@@ -1495,23 +1431,6 @@ main {
   margin: 0 20px;
   min-width: 740px;
   height: 156px;
-}
-.timeline-heading .legend {
-  font-size: 10px;
-  margin-top: 2px;
-}
-.timeline-heading .legend span {
-  gap: 5px;
-}
-.legend .weekend-key {
-  width: 10px;
-  height: 10px;
-  background: #f0f2eb;
-  border: 1px solid #e2e7d8;
-  border-radius: 2px;
-}
-.timeline-foot {
-  font-size: 9px;
 }
 .weekend-band {
   position: absolute;
@@ -2059,13 +1978,9 @@ main {
   .timeline-heading {
     display: block;
   }
-  .timeline-heading .legend {
+  .timeline-range {
     margin-top: 10px;
-    gap: 10px;
     font-size: 9px;
-  }
-  .timeline-foot .key-hint {
-    display: none;
   }
   .timeline {
     margin-inline: 18px;

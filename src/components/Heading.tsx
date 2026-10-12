@@ -1,8 +1,7 @@
 import type { WorkRecord } from '../lib/types';
 
-/** 머리말과 지금 보는 기간의 숫자 요약 */
+/** 머리말과 지금 보는 기간의 기록 수 */
 export function Heading({ records }: { records: WorkRecord[] }) {
-  const days = new Set(records.map((r) => r.date)).size;
   return (
     <section className="heading">
       <div>
@@ -16,13 +15,6 @@ export function Heading({ records }: { records: WorkRecord[] }) {
           <dd>
             <span>{records.length}</span>
             <small>개</small>
-          </dd>
-        </div>
-        <div>
-          <dt>활용한 날</dt>
-          <dd>
-            <span>{days}</span>
-            <small>일</small>
           </dd>
         </div>
       </dl>

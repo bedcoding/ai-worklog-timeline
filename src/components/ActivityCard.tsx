@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { monthOf, quarterOfMonth, toDay, yearOf, type DayRange, type Period } from '../lib/dates';
 import type { ImageEntry, ViewKind, WorkRecord } from '../lib/types';
-import { WORK_TYPES } from '../lib/workTypes';
 import { DatePicker, QuarterPicker, YearPicker } from './DatePicker';
 import { IconChevronLeft, IconChevronRight } from './Icons';
 import { Timeline } from './Timeline';
@@ -49,7 +48,6 @@ export function ActivityCard(props: ActivityCardProps) {
   };
   const selected = selectedId ? allRecords.find((r) => r.id === selectedId) : undefined;
   const pickerStart = selected ? { year: yearOf(selected.date), month: monthOf(selected.date) } : { year: period.year, month: period.month };
-  const showEtc = records.some((r) => r.type === 'etc');
   // 같은 날 기록은 아래 칸으로 쌓입니다. 기간을 바꿀 때마다 타임라인 높이가 바뀌지 않도록
   // 전체 기록에서 가장 많이 쌓인 만큼(최대 두 칸) 늘 비워 둡니다.
   const reservedLanes = useMemo(() => {
@@ -100,26 +98,7 @@ export function ActivityCard(props: ActivityCardProps) {
             </h2>
             <p className="helper">점에 올리면 증빙 미리보기, 클릭하면 자세히.</p>
           </div>
-          <div className="legend">
-            {(['dev', 'doc', 'design'] as const).map((t) => (
-              <span key={t} style={{ '--dot': WORK_TYPES[t].color } as CSSProperties}>
-                <i />
-                {WORK_TYPES[t].label}
-              </span>
-            ))}
-            {showEtc && (
-              <span style={{ '--dot': WORK_TYPES.etc.color } as CSSProperties}>
-                <i />
-                {WORK_TYPES.etc.label}
-              </span>
-            )}
-            {period.view !== 'year' && (
-              <span>
-                <i className="weekend-key" />
-                주말
-              </span>
-            )}
-          </div>
+          <p className="timeline-range">{caption}</p>
         </div>
         <Timeline
           records={records}
@@ -132,14 +111,7 @@ export function ActivityCard(props: ActivityCardProps) {
           onSelect={props.onSelect}
           onOpen={props.onOpen}
         />
-        <div className="timeline-foot">
-          <span>{caption}</span>
-          <span className="key-hint">
-            <kbd>←</kbd>
-            <kbd>→</kbd> 기록 이동 <span style={{ marginLeft: 7 }}>Enter로 상세 보기</span>
-          </span>
-          <span className="swipe-hint">← 좌우로 밀어보세요 →</span>
-        </div>
+        <p className="swipe-hint">← 좌우로 밀어보세요 →</p>
       </div>
       {pickerOpen && titleRef.current && period.view === 'quarter' && (
         <QuarterPicker

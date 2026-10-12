@@ -61,6 +61,16 @@ describe('Word 내보내기', () => {
     expect(body).not.toContain('기록과 증빙');
   });
 
+  it('대표 업무 표시는 Word 내용을 바꾸지 않는다', async () => {
+    // 그림 개체 번호는 문서를 만들 때마다 늘어나서 비교에서 뺍니다
+    const same = (xml: string) => xml.replace(/(<wp:docPr|<pic:cNvPr) id="\d+"/g, '$1 id=""');
+    const featured = records.map((r, i) => (i === 0 ? { ...r, featured: true } : r));
+    for (const imagesBelow of [false, true]) {
+      const plain = await build({ imagesBelow });
+      expect(same((await build({ imagesBelow }, featured)).body)).toBe(same(plain.body));
+    }
+  });
+
   it('이미지가 없는 기록은 두 칸을 합쳐 내용만 넣는다', async () => {
     const { body } = await build();
     expect(body).not.toContain('이미지 없음');

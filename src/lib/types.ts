@@ -28,6 +28,13 @@ export interface WorkRecord {
   plain?: PlainVersion;
   /** 이 작업 중에 사용 한도에 도달했는지 */
   limitHit: boolean;
+  /**
+   * 대표 업무인지.
+   * 목록 맨 위 대표 업무 묶음으로 올리고 타임라인 점과 목록에 별을 붙입니다.
+   * 화면에만 쓰고, 내보내기의 선택이나 보고서 내용에는 영향을 주지 않습니다.
+   * 대표 업무일 때만 record.json 에 적습니다.
+   */
+  featured?: boolean;
   images: ImageRef[];
   /** 예시 데이터 여부. 설정이나 상단 버튼으로 한 번에 지울 수 있습니다. */
   sample: boolean;
@@ -97,4 +104,5 @@ export interface RecordDraft {
   effect: string;
   plain?: PlainVersion;
   limitHit: boolean;
+  featured?: boolean;
 }

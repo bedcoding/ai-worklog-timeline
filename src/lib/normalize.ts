@@ -100,6 +100,7 @@ export function normalizeRecord(raw: unknown): WorkRecord | null {
     ...(plain ? { plain } : {}),
     toolIds: Array.isArray(r.toolIds) ? r.toolIds.filter((t): t is string => typeof t === 'string') : [],
     limitHit: r.limitHit === true,
+    ...(r.featured === true ? { featured: true } : {}),
     sample: r.sample === true,
     images,
     createdAt: typeof r.createdAt === 'number' ? r.createdAt : now,

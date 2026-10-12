@@ -112,6 +112,15 @@ describe('buildReport', () => {
     expect(attachments.lines.every((l) => l.muted)).toBe(true);
   });
 
+  it('대표 업무 표시는 보고서 칸 내용과 기록 순서를 바꾸지 않는다', () => {
+    const featured = buildReport(
+      q3.map((r) => (r.title === '업무 매뉴얼 초안' ? { ...r, featured: true } : r)),
+      settings,
+    );
+    expect(featured.rows).toEqual(report.rows);
+    expect(featured.records.map((r) => r.id)).toEqual(report.records.map((r) => r.id));
+  });
+
   it('고쳐 쓴 칸은 같은 기간을 내보낼 때만 그 글을 쓰고, 고치기 전 내용도 함께 준다', () => {
     const key = '2026년 3분기(7. 1.~9. 30.)';
     const custom: Settings = {

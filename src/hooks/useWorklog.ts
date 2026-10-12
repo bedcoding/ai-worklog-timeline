@@ -305,6 +305,14 @@ export function useWorklog() {
     [putRecord],
   );
 
+  /** 대표 업무 표시를 켜고 끕니다 */
+  const setFeatured = useCallback(
+    async (id: string, featured: boolean) => {
+      putRecord(await api.saveRecord({ record: { ...find(id), featured, updatedAt: Date.now() }, uploads: [] }));
+    },
+    [putRecord],
+  );
+
   const saveSettings = useCallback(
     async (settings: Settings) => {
       const saved = await api.saveSettings(settings);
@@ -406,6 +414,7 @@ export function useWorklog() {
     deleteRecords,
     addImages,
     removeImage,
+    setFeatured,
     saveSettings,
     insertSamples,
     clearSamples,

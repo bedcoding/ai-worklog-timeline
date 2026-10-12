@@ -5,7 +5,13 @@ import { READ_ONLY } from '../lib/mode';
 import { matchesSearch, searchTerms } from '../lib/search';
 import type { ImageEntry, WorkRecord } from '../lib/types';
 import { WORK_TYPES } from '../lib/workTypes';
-import { IconChevronRight, IconImage } from './Icons';
+import { IconChevronRight, IconImage, IconStar } from './Icons';
+
+/**
+ * 맨 위 대표 업무 묶음을 가리키는 값.
+ * 다른 묶음은 첫날의 날짜 번호(1970-01-01부터 며칠째, 0 이상)로 가리키므로 겹치지 않습니다.
+ */
+const FEATURED_GROUP = -1;
 
 interface WeeklyLogProps {
   records: WorkRecord[];
@@ -50,26 +56,36 @@ export function WeeklyLog(props: WeeklyLogProps) {
   const searching = terms.length > 0;
   const records = useMemo(() => periodRecords.filter((r) => matchesSearch(r, terms)), [periodRecords, terms]);
 
-  // 주(월요일부터)나 달 묶음, 최근 묶음이 위로
+  // 대표 업무는 맨 위 대표 업무 묶음으로 올리고, 나머지는 주(월요일부터)나 달로 묶어 최근 묶음이 위로 오게 합니다.
+  // 대표 업무는 원래 주나 달 묶음에서는 빼서 한 번만 보입니다.
   const groups = useMemo(() => {
     const map = new Map<number, WorkRecord[]>();
+    const featured: WorkRecord[] = [];
     for (const r of records) {
+      if (r.featured) {
+        featured.push(r);
+        continue;
+      }
       const start = groupStartOf(toDay(r.date), unit);
       const list = map.get(start) ?? [];
       list.push(r);
       map.set(start, list);
     }
-    return [...map.entries()].sort((a, b) => b[0] - a[0]).map(([start, list]) => ({ start, list: [...list].reverse() }));
+    const dated = [...map.entries()].sort((a, b) => b[0] - a[0]).map(([start, list]) => ({ start, list: [...list].reverse() }));
+    return featured.length ? [{ start: FEATURED_GROUP, list: [...featured].reverse() }, ...dated] : dated;
   }, [records, unit]);
+  const latestStart = groups.find((g) => g.start !== FEATURED_GROUP)?.start;
+  const groupOf = (r: WorkRecord) => (r.featured ? FEATURED_GROUP : groupStartOf(toDay(r.date), unit));
 
-  // 기간이 바뀌면 최근 두 주(달로 묶을 때는 최근 석 달)만 펼친 상태로 시작합니다.
+  // 기간이 바뀌면 대표 업무 묶음과 최근 두 주(달로 묶을 때는 최근 석 달)만 펼친 상태로 시작합니다.
   // 검색하는 동안에는 결과가 있는 묶음을 모두 펼친 상태로 시작합니다.
   const openKey = searching ? `${periodKey}|${terms.join(' ')}` : periodKey;
   const [openState, setOpenState] = useState<{ key: string; groups: Set<number> } | null>(null);
+  const recent = groups.filter((g) => g.start !== FEATURED_GROUP).slice(0, unit === 'month' ? 3 : 2);
   const opened =
     openState && openState.key === openKey
       ? openState.groups
-      : new Set((searching ? groups : groups.slice(0, unit === 'month' ? 3 : 2)).map((g) => g.start));
+      : new Set((searching ? groups : [...groups.filter((g) => g.start === FEATURED_GROUP), ...recent]).map((g) => g.start));
   const setGroupOpen = (start: number, value: boolean) => {
     const next = new Set(opened);
     if (value) next.add(start);
@@ -94,7 +110,7 @@ export function WeeklyLog(props: WeeklyLogProps) {
     if (!reveal) return;
     const record = records.find((r) => r.id === reveal.id);
     if (!record) return;
-    const start = groupStartOf(toDay(record.date), unit);
+    const start = groupOf(record);
     if (!opened.has(start)) setGroupOpen(start, true);
     requestAnimationFrame(() => {
       const el = listRef.current?.querySelector<HTMLButtonElement>(`.row-main[data-open="${reveal.id}"]`);
@@ -174,14 +190,15 @@ export function WeeklyLog(props: WeeklyLogProps) {
       </div>
       <div ref={listRef}>
         {groups.length ? (
-          groups.map((group, index) => {
+          groups.map((group) => {
             const isOpen = opened.has(group.start);
             const ids = group.list.map((r) => r.id);
             const picked = ids.filter((id) => checked.has(id)).length;
-            const range = groupLabel(group.start, unit);
-            const rowsId = `week-rows-${group.start}`;
+            const isFeatured = group.start === FEATURED_GROUP;
+            const range = isFeatured ? '대표 업무' : groupLabel(group.start, unit);
+            const rowsId = isFeatured ? 'week-rows-featured' : `week-rows-${group.start}`;
             return (
-              <div key={group.start} className={`week${isOpen ? ' is-open' : ''}`}>
+              <div key={group.start} className={`week${isOpen ? ' is-open' : ''}${isFeatured ? ' is-featured' : ''}`}>
                 {/* 왼쪽 체크는 그 묶음의 기록을 한꺼번에 고르고, 나머지 머리 부분을 누르면 펼치고 접습니다 */}
                 <div className="week-head">
                   <label className="week-check">
@@ -199,9 +216,12 @@ export function WeeklyLog(props: WeeklyLogProps) {
                     aria-controls={isOpen ? rowsId : undefined}
                     onClick={() => setGroupOpen(group.start, !isOpen)}
                   >
-                    <span className="week-range">{range}</span>
+                    <span className="week-range">
+                      {isFeatured && <IconStar className="week-star" />}
+                      {range}
+                    </span>
                     <span className="week-meta">기록 {group.list.length}개</span>
-                    {index === 0 && !searching && <span className="week-last">최근 기록</span>}
+                    {group.start === latestStart && !searching && <span className="week-last">최근 기록</span>}
                     <span className="week-chevron" aria-hidden="true">
                       <IconChevronRight />
                     </span>
@@ -291,6 +311,7 @@ function WorkRow({ record: r, active, checked, thumb, onCheck, onOpen }: WorkRow
         {summary && <span className="row-description">{summary}</span>}
       </button>
       <div className="row-tail">
+        {r.featured && <IconStar className="row-star" />}
         <button type="button" className="row-open" aria-label={`${r.title} 상세 보기`} onClick={onOpen}>
           ↗
         </button>

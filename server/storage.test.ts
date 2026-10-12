@@ -90,6 +90,17 @@ describe('데이터 폴더 저장소', () => {
     expect((await readJson('records/2026-10-01_a1b2c3d4/record.json')).plain).toBeUndefined();
   });
 
+  it('대표 업무 표시는 켰을 때만 사용 한도 다음 자리에 저장하고, 끄면 뺀다', async () => {
+    await storage.saveRecord({ record: record({ featured: true }), uploads: [] });
+    const saved = await readJson('records/2026-10-01_a1b2c3d4/record.json');
+    expect(saved.featured).toBe(true);
+    expect(Object.keys(saved).indexOf('featured')).toBe(Object.keys(saved).indexOf('limitHit') + 1);
+    expect((await storage.load()).records[0].featured).toBe(true);
+    await storage.saveRecord({ record: record({ featured: false }), uploads: [] });
+    expect('featured' in (await readJson('records/2026-10-01_a1b2c3d4/record.json'))).toBe(false);
+    expect((await storage.load()).records[0].featured).toBeUndefined();
+  });
+
   it('날짜를 바꾸면 폴더 이름을 바꾸고, 뺀 이미지는 trash 로 옮긴다', async () => {
     const first = await storage.saveRecord({
       record: record({

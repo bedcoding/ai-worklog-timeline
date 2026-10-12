@@ -23,6 +23,10 @@
     0 0 0 3px #d7eeac,
     0 0 0 4px #bfd58e;
 }
+/* 연도별 보기는 점이 작아서 대표 업무 별을 점에 더 붙입니다 */
+.timeline.is-year .point .point-star {
+  top: -3px;
+}
 .point.is-hover:before {
   transform: scale(1.2);
 }
@@ -440,6 +444,29 @@ dialog:focus {
 .tag.limit-tag {
   background: #f7ece4;
   color: #9a6a4b;
+}
+/* 대표 업무: 읽기 전용 상세 화면의 태그, 목록 맨 위 묶음 이름, 상세 화면의 표시 단추 */
+.tag.featured-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f2f8e8;
+  color: #526c28;
+}
+.featured-tag svg,
+.week-range .week-star {
+  width: 12px;
+  height: 12px;
+  fill: #c5df8e;
+  stroke: #668937;
+  stroke-width: 1.6;
+}
+.week-range .week-star {
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+.detail .star-button + .detail-check {
+  margin-top: 8px;
 }
 .attach-actions {
   display: flex;
